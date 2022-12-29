@@ -1,0 +1,26 @@
+[build-system]
+requires      = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dbt_magics"
+version = "0.0.1"
+description = "Magics for dbt and SQL."
+readme = "README.md"
+authors = [{ name = "Anton Enns", email = "antontocha@gmail.com" }]
+license = { file = "LICENSE" }
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+]
+keywords = ["dbt", "SQL", "magic"]
+dependencies = []
+requires-python = ">=3.9"
+
+[project.optional-dependencies]
+dev = []
+
+[project.urls]
+Homepage = "https://github.com/realpython/reader"
+
