@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dbt_magics"
-version = "0.0.1"
+version = "1.0.1"
 description = "Magics for dbt and SQL."
 readme = "README.md"
 authors = [{ name = "Anton Enns", email = "antontocha@gmail.com" }]
