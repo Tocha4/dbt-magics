@@ -100,6 +100,9 @@ class dbtHelper():
                     macros_txt += "".join(file.readlines()) + "\n"
         return macros_txt
 
+    def var(self, value):
+        return self.dbt_project['vars'].get(value, f'ERROR: NOT FOUND VALUE {value}')
+
 
 class prStyle():
     BLACK = '\033[30m'

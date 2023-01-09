@@ -127,7 +127,7 @@ SELECT * FROM {{ ref('table_in_dbt_project') }}
 
             macros_txt = self.dbt_helper.macros_txt
             jinja_statement = params_var+macros_txt+cell
-            statement = Template(jinja_statement).render(source=self.dbt_helper.source, ref=self.dbt_helper.ref).strip()
+            statement = Template(jinja_statement).render(source=self.dbt_helper.source, ref=self.dbt_helper.ref, var=self.dbt_helper.var).strip()
 
             if args.parser:
                 print(statement)
