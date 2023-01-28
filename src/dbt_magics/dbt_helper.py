@@ -96,7 +96,7 @@ class dbtHelper():
         for mp in self.dbt_project.get("macro-paths"):
             macros_files = self._get_macros(os.path.join(folder, mp))
             for mf in macros_files:
-                with open(mf) as file:
+                with open(mf, encoding='utf-8') as file:
                     macros_txt += "".join(file.readlines()) + "\n"
         return macros_txt
 

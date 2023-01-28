@@ -291,7 +291,7 @@ class DataController():
         with self.output:
             self.output.clear_output()
             cols = "\n    , ".join([f(i.check.description, i.lab.value) for i in self.check_boxes if i.check.value])
-            print(f'{prStyle.MAGENTA}SELECT{prStyle.RESET}\n    {cols} \n{prStyle.MAGENTA}FROM{prStyle.RESET} {prStyle.GREEN}"{self.wg_catalog.value}"."{self.wg_database.value}"."{self.wg_table.value}"{prStyle.RESET}')
+            print(f'%%athena\n{prStyle.MAGENTA}SELECT{prStyle.RESET}\n    {cols} \n{prStyle.MAGENTA}FROM{prStyle.RESET} {prStyle.GREEN}"{self.wg_catalog.value}"."{self.wg_database.value}"."{self.wg_table.value}"{prStyle.RESET}')
 
     def search_tables(self, observation):
         self.wg_table.index = None
