@@ -1,10 +1,11 @@
 from time import time
 import pandas as pd
-from jinja2 import Template
+from jinja2 import Template, Environment, meta
 import io
 import os
 from pathlib import Path
 
+from IPython import get_ipython
 from IPython.core import magic_arguments, display
 from IPython.core.magic import line_magic, cell_magic, line_cell_magic, Magics, magics_class
 import ipywidgets as widgets
@@ -106,10 +107,12 @@ class SQLMagics(Magics):
 SELECT * FROM {{ ref('table_in_dbt_project') }}
 ---------------------------------------------------------------------------
 ---------------------------------------------------------------------------
-asdf = str({'a':'value','b':'value2'}).replace(' ','')
+asdf = {'a':'value','b':'value2'}
+test_func = lambda x: x+1
 
 %%athena --params $asdf -p 
-
+{{test_func(41)}}
+{{params}}
 {{params.b, params.a}}
 SELECT * FROM {{ ref('table_in_dbt_project') }}
 ---------------------------------------------------------------------------
@@ -120,14 +123,13 @@ SELECT * FROM {{ ref('table_in_dbt_project') }}
         else:        
             args = magic_arguments.parse_argstring(self.athena, line)
             self.dbt_helper = Adapter(args.profile, args.target)
-            if args.params!='':
-                params_var = ' {%-set params='+args.params+' -%}'
-            else:
-                params_var = ''
+            env = Environment()
+            ipython = get_ipython()
+            kwargs = {i:ipython.ev(i) for i in meta.find_undeclared_variables(env.parse(cell)) if i not in ('source', 'ref', 'var')}
 
             macros_txt = self.dbt_helper.macros_txt
-            jinja_statement = params_var+macros_txt+cell
-            statement = Template(jinja_statement).render(source=self.dbt_helper.source, ref=self.dbt_helper.ref, var=self.dbt_helper.var).strip()
+            jinja_statement = macros_txt+cell
+            statement = Template(jinja_statement).render(source=self.dbt_helper.source, ref=self.dbt_helper.ref, var=self.dbt_helper.var, **kwargs).strip()
 
             if args.parser:
                 print(statement)
