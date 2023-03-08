@@ -124,8 +124,12 @@ SELECT * FROM {{ ref('table_in_dbt_project') }}
             args = magic_arguments.parse_argstring(self.athena, line)
             self.dbt_helper = Adapter(args.profile, args.target)
             env = Environment()
-            ipython = get_ipython()
-            kwargs = {i:ipython.ev(i) for i in meta.find_undeclared_variables(env.parse(cell)) if i not in ('source', 'ref', 'var')}
+            def ipython(variable):
+                try: result = get_ipython().ev(variable)
+                except: result = False
+                return result
+
+            kwargs = {i:ipython(i) for i in meta.find_undeclared_variables(env.parse(cell)) if ipython(i)}
 
             macros_txt = self.dbt_helper.macros_txt
             jinja_statement = macros_txt+cell
