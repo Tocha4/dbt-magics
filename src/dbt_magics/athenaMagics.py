@@ -232,11 +232,13 @@ class DataController():
         self.wg_columns_container = widgets.VBox(children=[self.all_columns])
         self.wg_column = widgets.Accordion(children=[self.wg_columns_container], selected_index=None)    
         self.select_sql = widgets.Button(description="SELECT")
+        self.select_sql_star = widgets.Button(description="SELECT ALL")
+        self.select_box = widgets.VBox(children=[self.select_sql, self.select_sql_star])
         self.output = widgets.Output()
         self.output.add_class("anton-enns")
         self.wg_output = widgets.Accordion(children=[self.output])
         self.pannel = widgets.HBox(
-                children=[self.wg_base_dropdowns, self.wg_column, self.select_sql, self.wg_output],
+                children=[self.wg_base_dropdowns, self.wg_column, self.select_box, self.wg_output],
                 box_style='info' # one of 'success', 'info', 'warning' or 'danger', or ''
             )  
         
@@ -245,6 +247,7 @@ class DataController():
         self.wg_database.observe(self.get_tables, names='value')
         self.wg_table.observe(self.get_colums, names='value')
         self.select_sql.on_click(self.on_button_clicked)
+        self.select_sql_star.on_click(lambda x: self.on_button_clicked(x, star=True))
         self.wg_search_table.observe(self.search_tables, names='value')
         self.all_columns.on_click(self.all_columns_handler)
         
@@ -289,15 +292,24 @@ class DataController():
             if i['Name']==table['new']:
                 cols = [(i['Name'], i['Type']) for i in i['Columns']]
                 # self.check_boxes = [f(f"{i['Name']} -- {i['Type']}") for i in i['Columns']]
-                self.check_boxes = [f(i['Name'], i['Type']) for i in i['Columns']] + [f(i['Name'], i['Type']+'(Part.)') for i in i.get('PartitionKeys', [])]
+                self.partition_columns = [f(i['Name'], i['Type']+'(Part.)') for i in i.get('PartitionKeys', [])]
+                self.check_boxes = [f(i['Name'], i['Type']) for i in i['Columns']] + self.partition_columns
                 self.wg_columns_container.children = [self.all_columns]+self.check_boxes
     
-    def on_button_clicked(self, b):
+    def on_button_clicked(self, x, star=False):
         f = lambda name, dtype:  f'{name} {prStyle.BLUE}-- {dtype}{prStyle.RESET}'
         with self.output:
             self.output.clear_output()
-            cols = "\n    , ".join([f(i.check.description, i.lab.value) for i in self.check_boxes if i.check.value])
-            print(f'%%athena\n{prStyle.MAGENTA}SELECT{prStyle.RESET}\n    {cols} \n{prStyle.MAGENTA}FROM{prStyle.RESET} {prStyle.GREEN}"{self.wg_catalog.value}"."{self.wg_database.value}"."{self.wg_table.value}"{prStyle.RESET}')
+            part = [i.check.description for i in self.partition_columns if i.lab.value in ('DATE(PART.)', 'STRING(PART.)')]
+            if len(part):
+                part_string = f"\n{prStyle.MAGENTA}WHERE{prStyle.RESET} DATE({part[0]})=current_date\n{prStyle.MAGENTA}LIMIT{prStyle.RESET} {prStyle.CYAN}100{prStyle.RESET}"
+            else:
+                part_string = f"\n{prStyle.MAGENTA}LIMIT{prStyle.RESET} {prStyle.CYAN}100{prStyle.RESET}"
+            if star:
+                cols = '*'
+            else:
+                cols = "\n    , ".join([f(i.check.description, i.lab.value) for i in self.check_boxes if i.check.value])
+            print(f'{prStyle.RED}%%athena{prStyle.RESET}\n{prStyle.MAGENTA}SELECT{prStyle.RESET}\n    {cols} \n{prStyle.MAGENTA}FROM{prStyle.RESET} {prStyle.GREEN}"{self.wg_catalog.value}"."{self.wg_database.value}"."{self.wg_table.value}"{prStyle.RESET}{part_string}')
 
     def search_tables(self, observation):
         self.wg_table.index = None
