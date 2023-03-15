@@ -229,7 +229,10 @@ class DataController():
         self.wg_base_dropdowns = widgets.VBox(children=[self.wg_catalog, self.wg_database, self.wg_search_table, self.wg_table])
         self.wg_base_dropdowns.add_class('wg_base_dropdowns')
         self.all_columns = widgets.Button(description="All Columns")
-        self.wg_columns_container = widgets.VBox(children=[self.all_columns])
+        self.wg_search_column = widgets.Text(placeholder='<column>')
+        self.wg_columns_and_search = widgets.HBox(children=[self.all_columns, self.wg_search_column])
+        self.wg_check_boxes = widgets.VBox(children=[])
+        self.wg_columns_container = widgets.VBox(children=[self.wg_columns_and_search, self.wg_check_boxes])
         self.wg_column = widgets.Accordion(children=[self.wg_columns_container], selected_index=None)    
         self.select_sql = widgets.Button(description="SELECT")
         self.select_sql_star = widgets.Button(description="SELECT ALL")
@@ -250,6 +253,8 @@ class DataController():
         self.select_sql_star.on_click(lambda x: self.on_button_clicked(x, star=True))
         self.wg_search_table.observe(self.search_tables, names='value')
         self.all_columns.on_click(self.all_columns_handler)
+        self.wg_search_column.observe(self.search_columns, names='value')
+        
         
     def list_table_metadata(self, CatalogName, DatabaseName):
         response = self.client.list_table_metadata(
@@ -293,8 +298,9 @@ class DataController():
                 cols = [(i['Name'], i['Type']) for i in i['Columns']]
                 # self.check_boxes = [f(f"{i['Name']} -- {i['Type']}") for i in i['Columns']]
                 self.partition_columns = [f(i['Name'], i['Type']+'(Part.)') for i in i.get('PartitionKeys', [])]
-                self.check_boxes = [f(i['Name'], i['Type']) for i in i['Columns']] + self.partition_columns
-                self.wg_columns_container.children = [self.all_columns]+self.check_boxes
+                self._check_boxes = [f(i['Name'], i['Type']) for i in i['Columns']] + self.partition_columns
+                self.check_boxes = self._check_boxes.copy()
+                self.wg_check_boxes.children = self.check_boxes
     
     def on_button_clicked(self, x, star=False):
         f = lambda name, dtype:  f'{name} {prStyle.BLUE}-- {dtype}{prStyle.RESET}'
@@ -308,12 +314,15 @@ class DataController():
             if star:
                 cols = '*'
             else:
-                cols = "\n    , ".join([f(i.check.description, i.lab.value) for i in self.check_boxes if i.check.value])
+                cols = "\n    , ".join([f(i.check.description, i.lab.value) for i in self.wg_check_boxes.children if i.check.value])
             print(f'{prStyle.RED}%%athena{prStyle.RESET}\n{prStyle.MAGENTA}SELECT{prStyle.RESET}\n    {cols} \n{prStyle.MAGENTA}FROM{prStyle.RESET} {prStyle.GREEN}"{self.wg_catalog.value}"."{self.wg_database.value}"."{self.wg_table.value}"{prStyle.RESET}{part_string}')
 
     def search_tables(self, observation):
         self.wg_table.index = None
         self.wg_table.options = tuple([i['Name'] for i in self.TableMetadataList if observation['new'] in i['Name']])
+
+    def search_columns(self, observation):
+        self.wg_check_boxes.children = [i for i in self.check_boxes if observation['new'] in i.check.description]
 
     def all_columns_handler(self, observation):
         if all([i.check.value for i in self.check_boxes]):
