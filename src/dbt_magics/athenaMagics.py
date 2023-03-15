@@ -298,8 +298,7 @@ class DataController():
                 cols = [(i['Name'], i['Type']) for i in i['Columns']]
                 # self.check_boxes = [f(f"{i['Name']} -- {i['Type']}") for i in i['Columns']]
                 self.partition_columns = [f(i['Name'], i['Type']+'(Part.)') for i in i.get('PartitionKeys', [])]
-                self._check_boxes = [f(i['Name'], i['Type']) for i in i['Columns']] + self.partition_columns
-                self.check_boxes = self._check_boxes.copy()
+                self.check_boxes = [f(i['Name'], i['Type']) for i in i['Columns']] + self.partition_columns
                 self.wg_check_boxes.children = self.check_boxes
     
     def on_button_clicked(self, x, star=False):
