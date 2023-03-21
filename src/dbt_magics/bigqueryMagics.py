@@ -1,19 +1,20 @@
+import os
+from pathlib import Path
 from time import time
+
 import pandas as pd
-from jinja2 import Template
-import io
-
-from IPython.core import magic_arguments, display
-from IPython.core.magic import line_magic, cell_magic, line_cell_magic, Magics, magics_class
-
 from google.cloud import bigquery
+from IPython.core import display, magic_arguments
+from IPython.core.magic import (Magics, cell_magic, line_cell_magic,
+                                line_magic, magics_class)
+from jinja2 import Template
 
 from dbt_magics.dbt_helper import dbtHelper
 
 
 class Adapter(dbtHelper):
-    def __init__(self, profile_name="gcp_dwh", target='prod'):
-        super().__init__(profile_name=profile_name, target=target)
+    def __init__(self, profile_name="dwh_bigquery", target='prod'):
+        super().__init__(profile_name=profile_name, target=target, default_dbt_folder=os.path.join(Path().home(), "documents", "data-aws", "dwh_bigquery"))
         
     def source(self, schema_name, table):
         SOURCES, _ = self._sources_and_models()
@@ -46,25 +47,30 @@ class SQLMagics(Magics):
     @magic_arguments.argument('--dataframe', '-df', default="df", help='The variable to return the results in.')
     @magic_arguments.argument('--parser', '-p', action='store_true', help='Translate Jinja.')
     @magic_arguments.argument('--params', default='', help='Add additional Jinja params.')
-    @magic_arguments.argument('--profile', default='gcp_dwh', help='')
+    @magic_arguments.argument('--profile', default='dwh_bigquery', help='')
     @magic_arguments.argument('--target', default='dev', help='')
-    def biggy(self, line, cell):
+    def bigquery(self, line, cell=None):
         """
----------------------------------------------------------------------------
-%%biggy
+        ---------------------------------------------------------------------------
+        %%biggy
 
-SELECT * FROM {{ ref('table_in_dbt_project') }}
----------------------------------------------------------------------------
----------------------------------------------------------------------------
-asdf = str({'a':'value','b':'value2'}).replace(' ','')
+        SELECT * FROM {{ ref('table_in_dbt_project') }}
+        ---------------------------------------------------------------------------
+        ---------------------------------------------------------------------------
+        asdf = str({'a':'value','b':'value2'}).replace(' ','')
 
-%%biggy --params $asdf -p 
+        %%biggy --params $asdf -p 
 
-{{params.b, params.a}}
-SELECT * FROM {{ ref('table_in_dbt_project') }}
----------------------------------------------------------------------------
-"""
-        args = magic_arguments.parse_argstring(self.biggy, line)
+        {{params.b, params.a}}
+        SELECT * FROM {{ ref('table_in_dbt_project') }}
+        ---------------------------------------------------------------------------
+        """
+        "bigquery line magic"
+        if cell == None:
+            pass #TODO
+        
+        args = magic_arguments.parse_argstring(self.bigquery, line)
+
         self.dbt_helper = Adapter(args.profile, args.target)
         if args.params!='':
             params_var = ' {%-set params='+args.params+' -%}'
@@ -74,7 +80,6 @@ SELECT * FROM {{ ref('table_in_dbt_project') }}
         macros_txt = self.dbt_helper.macros_txt
         jinja_statement = params_var+macros_txt+cell
         statement = Template(jinja_statement).render(source=self.dbt_helper.source, ref=self.dbt_helper.ref).strip()
-
         start = time()
         if args.parser:
             print(statement)
@@ -85,7 +90,7 @@ SELECT * FROM {{ ref('table_in_dbt_project') }}
             flat_results = [dict(row) for row in results.result()]
             df = pd.DataFrame(flat_results)
             duration = time()-start
-            print(f'Execution time: {int(duration//60)} min. - {duration%60:.2f} sec. | Billed: {results.total_bytes_billed/(9.5367431640625*10**7):.4f}')
+            print(f'Execution time: {int(duration//60)} min. - {duration%60:.2f} sec. | Billed: TODO')
             #--------------------------------------------- End
 
             self.shell.user_ns[args.dataframe] = df

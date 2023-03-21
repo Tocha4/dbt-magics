@@ -8,8 +8,9 @@ from pathlib import Path
 #################### CLASSES ####################
 class dbtHelper():
 
-    def __init__(self, profile_name="dbt_athena_dwh", target=None):
-        self.DEFAULT_DBT_FOLDER = os.path.join(Path().home(), "projects", "data-aws", "dbt_athena_dwh")
+    def __init__(self, profile_name="dbt_athena_dwh", target=None, \
+                 default_dbt_folder=os.path.join(Path().home(), "projects", "data-aws", "dbt_athena_dwh")):
+        self.DEFAULT_DBT_FOLDER = default_dbt_folder
         self.profile_name = profile_name
         try:
             self.profile = self._get_profiles()[profile_name]
