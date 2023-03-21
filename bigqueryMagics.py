@@ -65,9 +65,8 @@ class SQLMagics(Magics):
         SELECT * FROM {{ ref('table_in_dbt_project') }}
         ---------------------------------------------------------------------------
         """
-        "bigquery line magic"
         if cell == None:
-            pass #TODO
+            pass
         
         args = magic_arguments.parse_argstring(self.bigquery, line)
 
@@ -90,17 +89,16 @@ class SQLMagics(Magics):
             flat_results = [dict(row) for row in results.result()]
             df = pd.DataFrame(flat_results)
             duration = time()-start
-            print(f'Execution time: {int(duration//60)} min. - {duration%60:.2f} sec. | Billed: TODO')
+            # cost per GB 0,023 * 1e-9 = cost per byte
+            PriceInDollar = str(results.estimated_bytes_processed * (0.023 * 1e-9)) + "$" if (results.estimated_bytes_processed != None) \
+                    else "error calculating price"
+            print(f'Execution time: {int(duration//60)} min. - {duration%60:.2f} sec.\
+                | Cost: {PriceInDollar} Bytes Billed: {results.estimated_bytes_processed}') 
             #--------------------------------------------- End
 
             self.shell.user_ns[args.dataframe] = df
             df = df.head(int(args.n_output)) if type(df)==pd.DataFrame else None
             return df
-
-
-
-
-
 
 def load_ipython_extension(ipython):
     js = """IPython.CodeCell.options_default.highlight_modes['magic_sql'] = {'reg':[/^%%(biggy)/]};
