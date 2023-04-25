@@ -93,7 +93,8 @@ class SQLMagics(Magics):
             duration = time()-start
             # https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#JobStatistics2.FIELDS.total_bytes_billed
             # cost per GB 0,023 * 1e-9 = cost per byte
-            PriceInDollar = str(results.estimated_bytes_processed * (0.023 * 1e-9)) + "$" if (results.total_bytes_billed != None) \
+            PriceInDollar = str(results.estimated_bytes_processed * (0.023 * 1e-9) if results.estimated_bytes_processed != None else "") \
+                + "$" if (results.total_bytes_billed != None) \
                     else "error calculating price"
             print(f'Execution time: {int(duration//60)} min. - {duration%60:.2f} sec.\
                 | Cost: {PriceInDollar} Bytes Billed: {results.estimated_bytes_processed}') 
