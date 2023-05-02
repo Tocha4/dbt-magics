@@ -17,7 +17,7 @@ So, instead of using the Athena Query Editor or the BigQuery Console, you can us
 ## Installation
 
 ```bash
-pip install /path/to/dbt-magics
+pip install git+https://github.com/Tocha4/dbt-magics.git
 ```
 
 ## Setup dbt
@@ -73,5 +73,5 @@ The image below shows an example of the interface for the cell magic.
 ## Contributing
 In order to edit the code, please install the package in editable mode and run the command below:
 ```bash
-pip install -e .
+pip install -e /path/to/dbt-magics
 ```
