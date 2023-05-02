@@ -1,7 +1,8 @@
 # dbt-magics
 ### What is dbt-magics?
 dbt-magics is a python package that provides python line and cell magics when developing with dbt.
-The magics allow you to create and run SQL commands againt AWS Athena and Google BigQuery from within a Jupyter notebook or VSCode notebook.
+The magics allow you to create and run SQL commands against AWS Athena and Google BigQuery from within a Jupyter notebook or VSCode notebook.
+So, instead of using the Athena Query Editor or the BigQuery Console, you can use the magics to run SQL commands directly from within your notebook.
 
 ## Required IDE (one of the following)
 - jupyter-notebook
