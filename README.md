@@ -36,7 +36,7 @@ In order to use the Athena magics, run the following command s in your notebook:
 The line magic will run the SQL command and return the results as a pandas dataframe.
 ```python
 %athena
-SELECT * FROM my_table
+SELECT * FROM my_database.my_table
 ```
 ### Cell Magic
 The cell magic provides a visual dropdown interface that allows to select a specific database, table and its columns. Then, a SQL-Query is generated based on the selections. The SQL-Query can then be run using the line magic.
@@ -54,7 +54,7 @@ BigQuery magics are very similar to Athena magics. The commands are as follows:
 ### Line Magic
 ```python
 %bigquery
-SELECT * FROM my_table
+SELECT * FROM my_project.my_dataset.my_table
 ```
 
 ### Cell Magic
