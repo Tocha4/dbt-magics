@@ -1,5 +1,5 @@
 [build-system]
-requires      = ["setuptools>=61.0.0", "wheel", "dbt-core", "dbt-bigquery", "dbt-athena-community"]
+requires      = ["setuptools>=61.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -15,7 +15,11 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 keywords = ["dbt", "SQL", "magic"]
-dependencies = []
+dependencies = [
+    "dbt-core",
+    "pandas",
+    "ipywidgets"
+]
 requires-python = ">=3.9"
 
 [project.optional-dependencies]
