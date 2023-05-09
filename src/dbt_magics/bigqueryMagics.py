@@ -9,9 +9,33 @@ from IPython.core import display, magic_arguments
 from IPython.core.magic import Magics, line_cell_magic, magics_class
 from jinja2 import Template
 
-from dbt_magics.athenaMagics import CB, prStyle
 from dbt_magics.dbt_helper import dbtHelper
 
+class prStyle():
+    BLACK = '\033[30m'
+    RED = '\033[31m'
+    GREEN = '\033[32m'
+    YELLOW = '\033[33m'
+    BLUE = '\033[34m'
+    MAGENTA = '\033[35m'
+    CYAN = '\033[36m'
+    WHITE = '\033[37m'
+    UNDERLINE = '\033[4m'
+    RESET = '\033[0m'
+
+class CB(widgets.HBox):
+    def __init__(self, name, dtype):
+        super().__init__()
+        layout = widgets.Layout(max_width='450px')
+        self.add_class('aen_cb_style')
+        self.layout = layout
+        self.check = widgets.Checkbox(value=True, description=name, indent=False)
+        self.lab = widgets.Label(dtype.upper())
+        dtype = dtype if "int" not in dtype else "int"
+        dtype = 'decimal' if "decimal" in dtype else dtype
+        dtype = 'string' if "varchar" in dtype else dtype
+        self.lab.add_class(f'aen_cb_lab_style_{dtype}')
+        self.children = (self.check, self.lab)
 
 class Adapter(dbtHelper):
     def __init__(self, profile_name="dwh_bigquery", target='prod', default_dbt_folder=os.path.join(Path().home(), "documents", "data-aws", "dwh_bigquery")):
@@ -124,7 +148,7 @@ class DataController():
         #----------- WIDGETS -----------#
         # self.wg_catalog = widgets.Dropdown(options=self.catalog_names, value=None)
         self.wg_project = widgets.Dropdown(options=[p.project_id for p in self.projects])
-       # self.wg_search_table = widgets.Text(placeholder='<table>')
+        self.wg_search_table = widgets.Text(placeholder='<table>')
         self.wg_database = widgets.Dropdown(options=[])
         self.wg_tables = widgets.Dropdown(options=[])
         self.get_dataset(self.wg_project.value)
@@ -145,10 +169,13 @@ class DataController():
             .p-Widget.jupyter-widgets.widget-label.aen_cb_lab_style_decimal {background-color:#e18972; font-size: 19pt; border-radius:7px; text-align: center !important; color: black !important;}
             .p-Widget.jupyter-widgets.widget-label.aen_cb_lab_style_double {background-color:#e1a25a; font-size: 19pt; border-radius:7px; text-align: center !important; color: black !important;}
             </style>''')
-        self.wg_base_dropdowns = widgets.VBox(children=[self.wg_project, self.wg_database, self.wg_tables])
+        self.wg_base_dropdowns = widgets.VBox(children=[self.wg_project, self.wg_database, self.wg_search_table, self.wg_tables])
         self.wg_base_dropdowns.add_class('wg_base_dropdowns')
         self.all_columns = widgets.Button(description="All Columns")
-        self.wg_columns_container = widgets.VBox(children=[self.all_columns])
+        self.wg_search_column = widgets.Text(placeholder='<column>')
+        self.wg_columns_and_search = widgets.HBox(children=[self.all_columns, self.wg_search_column])
+        self.wg_check_boxes = widgets.VBox(children=[])
+        self.wg_columns_container = widgets.VBox(children=[self.wg_columns_and_search, self.wg_check_boxes])
         self.wg_column = widgets.Accordion(children=[self.wg_columns_container], selected_index=None)    
         self.select_sql = widgets.Button(description="SELECT")
         self.select_sql_star = widgets.Button(description="SELECT ALL")
@@ -167,9 +194,10 @@ class DataController():
         self.wg_tables.observe(self.get_colums, names='value')
         self.select_sql.on_click(self.on_button_clicked)
         self.select_sql_star.on_click(lambda x: self.on_button_clicked(x, star=True))
-      #  self.wg_search_table.observe(self.search_tables, names='value')
+        self.wg_search_table.observe(self.search_tables, names='value')
         self.all_columns.on_click(self.all_columns_handler)
-        
+        self.wg_search_column.observe(self.search_columns, names='value')
+
     def list_dataset_metadata(self, ProjectName):
         self.client = bigquery.Client(ProjectName)
         datasets = list(self.client.list_datasets())  
@@ -196,14 +224,16 @@ class DataController():
         self.wg_tables.options = tuple(self.table_ids)
 
     def get_colums(self, table):
+        if table.new == None:
+            return
         full_table_id = f"{self.wg_project.value}.{self.wg_database.value}.{table.new}"
-        print(full_table_id)
         api_repr = self.client.get_table(full_table_id).to_api_repr()
         f = lambda name, dtype: CB(name, dtype)
         self.partition_columns = []
         #self.check_boxes = [] + self.partition_columns
         self.check_boxes = [f(i['name'], i['type']) for i in api_repr['schema']['fields']] + self.partition_columns
-        self.wg_columns_container.children = [self.all_columns]+self.check_boxes
+        self.wg_columns_container.children = [self.all_columns, self.wg_search_column]+self.check_boxes
+        self.wg_check_boxes.children = self.check_boxes
     
     def on_button_clicked(self, x, star=False):
         f = lambda name, dtype:  f'{name} {prStyle.BLUE}-- {dtype}{prStyle.RESET}'
@@ -221,8 +251,8 @@ class DataController():
             print(f'{prStyle.RED}%%bigquery{prStyle.RESET}\n{prStyle.MAGENTA}SELECT{prStyle.RESET}\n    {cols} \n{prStyle.MAGENTA}FROM{prStyle.RESET} {prStyle.GREEN}{self.wg_project.value}"."{self.wg_database.value}"."{self.wg_tables.value}"{prStyle.RESET}{part_string}')
 
     def search_tables(self, observation):
-        self.wg_database.index = None
-        self.wg_database.options = tuple([i['Name'] for i in self.DatasetMetadataList if observation['new'] in i['Name']])
+        self.wg_tables.index = None
+        self.wg_tables.options = tuple([i for i in self.table_ids if observation['new'] in i])
 
     def all_columns_handler(self, observation):
         if all([i.check.value for i in self.check_boxes]):
@@ -235,3 +265,14 @@ class DataController():
     
     def __call__(self):
         return self.pannel
+    
+    def search_columns(self, observation):
+        
+        self.wg_check_boxes.children = [i for i in self.check_boxes if observation['new'] in i.check.description]
+
+        for box in self.check_boxes:
+            if observation['new'] in box.check.description:
+                box.check.value = True
+            else: 
+                box.check.value = False
+        self.wg_columns_container.children = [self.all_columns, self.wg_search_column]+ [i for i in self.check_boxes if observation['new'] in i.check.description]
