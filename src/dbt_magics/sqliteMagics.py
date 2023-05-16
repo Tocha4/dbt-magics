@@ -1,13 +1,12 @@
 import sqlite3 as sql
 from time import time
+
 import pandas as pd
+from IPython.core import display, magic_arguments
+from IPython.core.magic import Magics, cell_magic, magics_class
 from jinja2 import Template
-import io
 
-from IPython.core import magic_arguments, display
-from IPython.core.magic import line_magic, cell_magic, line_cell_magic, Magics, magics_class
-
-from dbt_magics.dbt_helper import dbtHelper, get_macros
+from dbt_magics.dbt_helper import dbtHelper
 
 
 class Adapter(dbtHelper):
@@ -98,10 +97,6 @@ SELECT * FROM {{ ref('table_in_dbt_project') }}
                 return df
 
 
-
-
-
-
 def load_ipython_extension(ipython):
     js = """IPython.CodeCell.options_default.highlight_modes['magic_sql'] = {'reg':[/^%%(sqlity|athena|redshift)/]};
     IPython.notebook.events.one('kernel_ready.Kernel', function(){
@@ -111,5 +106,3 @@ def load_ipython_extension(ipython):
     """
     display.display_javascript(js, raw=True)
     ipython.register_magics(SQLMagics)
-
-

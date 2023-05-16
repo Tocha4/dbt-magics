@@ -1,19 +1,22 @@
-import pandas as pd
-from jinja2 import Template, Environment, meta
 import io
 import os
 from pathlib import Path
 
-from IPython import get_ipython
-from IPython.core import magic_arguments, display
-from IPython.core.magic import line_cell_magic, Magics, magics_class
-
 import boto3
-from dbt_magics import datacontroller
+import pandas as pd
+from IPython import get_ipython
+from IPython.core import display, magic_arguments
+from IPython.core.magic import Magics, line_cell_magic, magics_class
+from jinja2 import Environment, Template, meta
 
-from dbt_magics.dbt_helper import dbtHelper, prStyle
+from dbt_magics.datacontroller import DataController, prStyle
+from dbt_magics.dbt_helper import dbtHelper
 
-class AthenaDataContoller(datacontroller.DataController):
+"""
+Implementation of the AthenaDataContoller class.
+Implement abstract methods from DataController class.
+"""
+class AthenaDataController(DataController):
     def __init__(self):
         self.client = boto3.client('athena', region_name='eu-central-1')
 
@@ -23,30 +26,29 @@ class AthenaDataContoller(datacontroller.DataController):
     Implemented Abstract methods
     """
 
-    def set_dataset(self, database):
+    def get_datasets(self, database):
         DatabaseList = self.list_databases(CatalogName=database)
-        self.wg_database.index = None
-        self.wg_database.options = tuple([i['Name'] for i in DatabaseList])
+        return [i['Name'] for i in DatabaseList]
     
     def get_projects(self):
         self.DataCatalogs = self.client.list_data_catalogs()['DataCatalogsSummary']
         return [i['CatalogName'] for i in self.DataCatalogs]
 
     
-    def set_tables(self, database):
-        self.TableMetadataList = self.list_table_metadata(CatalogName=self.wg_project.value, DatabaseName=database['new'])
-        self.wg_tables.index = None
-        self.wg_tables.options = tuple([i['Name'] for i in self.TableMetadataList])
+    def get_tables(self, database):
+        self.TableMetadataList = self.list_table_metadata(CatalogName=self.wg_project.value, DatabaseName=database)
+        return [i['Name'] for i in self.TableMetadataList]
     
-    def set_columns(self, table):
-        f = lambda name, dtype: datacontroller.CB(name, dtype)
+    def get_columns(self, table):
+        columns = []
         for i in self.TableMetadataList:
-            if i['Name']==table['new']:
+            if i['Name']==table:
                 cols = [(i['Name'], i['Type']) for i in i['Columns']]
                 # self.check_boxes = [f(f"{i['Name']} -- {i['Type']}") for i in i['Columns']]
-                self.partition_columns = [f(i['Name'], i['Type']+'(Part.)') for i in i.get('PartitionKeys', [])]
-                self.check_boxes = [f(i['Name'], i['Type']) for i in i['Columns']] + self.partition_columns
-                self.wg_check_boxes.children = self.check_boxes
+                partition_columns = [(i['Name'], i['Type']+'(Part.)') for i in i.get('PartitionKeys', [])]
+                columns = [(i['Name'], i['Type']) for i in i['Columns']] + partition_columns
+
+        return columns
 
     """ 
     Additional methods 
@@ -198,7 +200,7 @@ SELECT * FROM {{ ref('table_in_dbt_project') }}
 ---------------------------------------------------------------------------
 """
         if cell is None:
-            dc = AthenaDataContoller()
+            dc = AthenaDataController()
             return dc()
         else:        
             args = magic_arguments.parse_argstring(self.athena, line)

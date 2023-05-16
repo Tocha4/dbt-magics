@@ -7,8 +7,8 @@ from google.cloud import bigquery
 from IPython.core import display, magic_arguments
 from IPython.core.magic import Magics, line_cell_magic, magics_class
 from jinja2 import Template
-from dbt_magics.datacontroller import CB, DataController
 
+from dbt_magics.datacontroller import CB, DataController
 from dbt_magics.dbt_helper import dbtHelper
 
 """
@@ -17,6 +17,7 @@ Implement abstract methods from DataController class.
 """
 class BigQueryDataController(DataController):
     def __init__(self):
+        # If you want to use a different project by default, set it here.
         self.client =  bigquery.Client()
 
         super().__init__()
@@ -25,28 +26,21 @@ class BigQueryDataController(DataController):
     Implemented Abstract methods
     """
 
-    def set_dataset(self, database):
-        self.DatasetMetadataList = self.get_dataset_metadata(database)
-        self.wg_database.index = None
-        self.wg_database.options = tuple([d.dataset_id for d in self.DatasetMetadataList])
+    def get_datasets(self, database):
+        DatasetMetadataList = self.get_dataset_metadata(database)
 
-    def set_tables(self, dataset):
-        self.table_ids = self.get_tables(dataset.new)
-        self.wg_tables.index = None
-        self.wg_tables.options = tuple(self.table_ids)
+        return [d.dataset_id for d in DatasetMetadataList]
 
-    def set_columns(self, table):
-        if table.new == None:
-            return
-        full_table_id = f"{self.wg_project.value}.{self.wg_database.value}.{table.new}"
+    def get_tables(self, dataset_id):
+        tables = self.client.list_tables(dataset_id)  # Make an API request.
+        table_ids = [table.table_id for table in tables]
+
+        return table_ids
+    
+    def get_columns(self, table):
+        full_table_id = f"{self.wg_project.value}.{self.wg_database.value}.{table}"
         api_repr = self.client.get_table(full_table_id).to_api_repr()
-        f = lambda name, dtype: CB(name, dtype)
-        self.partition_columns = []
-
-        #self.check_boxes = [] + self.partition_columns
-        self.check_boxes = [f(i['name'], i['type']) for i in api_repr['schema']['fields']] + self.partition_columns
-        self.wg_columns_container.children = [self.all_columns, self.wg_search_column]+self.check_boxes
-        self.wg_check_boxes.children = self.check_boxes
+        return [(i['name'], i['type']) for i in api_repr['schema']['fields']]
    
     def get_projects(self):
         return [p.project_id for p in self.client.list_projects()]
@@ -55,12 +49,6 @@ class BigQueryDataController(DataController):
     """
     Additional methods
     """
-
-    def get_tables(self, dataset_id):
-        tables = self.client.list_tables(dataset_id)  # Make an API request.
-        table_ids = [table.table_id for table in tables]
-
-        return table_ids
     
     def get_dataset_metadata(self, ProjectName):
         self.client = bigquery.Client(ProjectName)
