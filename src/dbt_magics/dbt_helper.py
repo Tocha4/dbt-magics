@@ -1,11 +1,17 @@
 import os
-import yaml
 from pathlib import Path
 
-
+import yaml
 
 
 #################### CLASSES ####################
+
+"""
+Base class to help with dbt project
+
+Child classes should be implemented in their respective magics.py files 
+due to the different dependencies (e.g. BigQuery, Athena, SQLite)
+"""
 class dbtHelper():
 
     def __init__(self, profile_name="dbt_athena_dwh", target=None, \
@@ -103,17 +109,3 @@ class dbtHelper():
 
     def var(self, value):
         return self.dbt_project['vars'].get(value, f'ERROR: NOT FOUND VALUE {value}')
-
-
-class prStyle():
-    BLACK = '\033[30m'
-    RED = '\033[31m'
-    GREEN = '\033[32m'
-    YELLOW = '\033[33m'
-    BLUE = '\033[34m'
-    MAGENTA = '\033[35m'
-    CYAN = '\033[36m'
-    WHITE = '\033[37m'
-    UNDERLINE = '\033[4m'
-    RESET = '\033[0m'
-

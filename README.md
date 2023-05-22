@@ -79,3 +79,8 @@ In order to edit the code, please install the package in editable mode and run t
 ```bash
 pip install -e .
 ```
+
+### Adding a new magic for a new database software
+1. Create a new magic file in the dbt_magics folder
+2. Create a new dbtHelper class that inherits from the dbtHelper class in the dbtHelper.py file
+3. Create a new DataController class that inherits from the datacontroller.DataController and implement the abstract methods for the specific database software
