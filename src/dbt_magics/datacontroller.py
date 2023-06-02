@@ -191,7 +191,6 @@ class DataController(ABC):
         else:
             self.wg_tables.index = None
 
-
     # Select all columns
     def all_columns_handler(self, observation):
         if all([i.check.value for i in self.check_boxes]):
@@ -200,11 +199,13 @@ class DataController(ABC):
         else:
             for box in self.check_boxes:
                 box.check.value = True
-        self.wg_column.children = [widgets.VBox([self.all_columns]+self.check_boxes)]
-    
+
+        self.wg_columns_container.children = [self.all_columns, self.wg_search_column] + self.check_boxes
+
     def __call__(self):
         return self.pannel
     
+    # Search the columns and set the checkboxes
     def search_columns(self, observation):
         self.wg_check_boxes.children = [i for i in self.check_boxes if observation['new'] in i.check.description]
 
