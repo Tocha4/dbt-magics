@@ -8,7 +8,7 @@ from IPython.core import display, magic_arguments
 from IPython.core.magic import Magics, line_cell_magic, magics_class
 from jinja2 import Template
 
-from dbt_magics.datacontroller import CB, DataController
+from dbt_magics.datacontroller import DataController
 from dbt_magics.dbt_helper import dbtHelper
 
 """
@@ -20,7 +20,7 @@ class BigQueryDataController(DataController):
         # If you want to use a different project by default, set it here.
         self.client =  bigquery.Client()
 
-        super().__init__()
+        super().__init__(r"%%bigquery", includeLeadingQuotesInCellMagic=False)
 
     """
     Implemented Abstract methods
@@ -155,4 +155,3 @@ def load_ipython_extension(ipython):
     """
     display.display_javascript(js, raw=True)
     ipython.register_magics(SQLMagics)
-

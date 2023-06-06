@@ -20,7 +20,7 @@ class AthenaDataController(DataController):
     def __init__(self):
         self.client = boto3.client('athena', region_name='eu-central-1')
 
-        super().__init__()
+        super().__init__(r"%%athena")
 
     """
     Implemented Abstract methods
