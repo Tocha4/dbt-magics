@@ -110,6 +110,7 @@ class DataController(ABC):
             .p-Widget.jupyter-widgets.widget-label.aen_cb_lab_style_double {background-color:#e1a25a; font-size: 19pt; border-radius:7px; text-align: center !important; color: black !important;}
             </style>''')
         
+        
         self.wg_base_dropdowns = widgets.VBox(children=[self.wg_project, self.wg_database, self.wg_search_table, self.wg_tables])
         self.wg_base_dropdowns.add_class('wg_base_dropdowns')
         self.all_columns = widgets.Button(description="All Columns")
@@ -226,7 +227,7 @@ class DataController(ABC):
             else:
                 cols = "\n    , ".join([f(i.check.description, i.lab.value) for i in self.check_boxes if i.check.value])
             
-            output_string = f'{prStyle.RED}{self.lineMagicName}{prStyle.RESET}\n{prStyle.MAGENTA}SELECT{prStyle.RESET}\n    {cols} \n{prStyle.MAGENTA}FROM{prStyle.RESET} "{prStyle.GREEN}{self.wg_project.value}"."{self.wg_database.value}"."{self.wg_tables.value}"{prStyle.RESET}{part_string}'
+            output_string = f'{prStyle.RED}{self.lineMagicName}{prStyle.RESET}\n{prStyle.MAGENTA}SELECT{prStyle.RESET}\n    {cols} \n{prStyle.MAGENTA}FROM{prStyle.RESET} {prStyle.GREEN}"{self.wg_project.value}"."{self.wg_database.value}"."{self.wg_tables.value}"{prStyle.RESET}{part_string}'
 
             if self.includeLeadingQuotesInCellMagic:
                 print(output_string)
