@@ -1,6 +1,8 @@
+import asyncio
 from abc import ABC, abstractmethod
 
 import ipywidgets as widgets
+
 
 # Styling
 class prStyle():
@@ -30,6 +32,41 @@ class CB(widgets.HBox):
         self.lab.add_class(f'aen_cb_lab_style_{dtype}')
         self.children = (self.check, self.lab)
 
+# Code for Timer and debounce
+# is from https://ipywidgets.readthedocs.io/en/latest/examples/Widget%20Events.html#Debouncing
+class Timer:
+    def __init__(self, timeout, callback):
+        self._timeout = timeout
+        self._callback = callback
+
+    async def _job(self):
+        await asyncio.sleep(self._timeout)
+        self._callback()
+
+    def start(self):
+        self._task = asyncio.ensure_future(self._job())
+
+    def cancel(self):
+        self._task.cancel()
+
+def debounce(wait):
+    """ Decorator that will postpone a function's
+        execution until after `wait` seconds
+        have elapsed since the last time it was invoked. """
+    def decorator(fn):
+        timer = None
+        def debounced(*args, **kwargs):
+            nonlocal timer
+            def call_it():
+                fn(*args, **kwargs)
+            if timer is not None:
+                timer.cancel()
+            timer = Timer(wait, call_it)
+            timer.start()
+        return debounced
+    return decorator
+
+
 """
 Base class for a data controller GUI interface
 Includes generic GUI functions
@@ -39,8 +76,14 @@ Child classes should be implemented in their respective magics.py files
 due to the different dependencies (e.g. BigQuery, Athena, SQLite)
 """
 class DataController(ABC):
-    def __init__(self):
+    """
+    lineMagicName: The name of the line magic that is displayed in the output widget, e.g. %bigquery or %athena
+    """
+    def __init__(self, lineMagicName, includeLeadingQuotesInCellMagic=True):
         self.projects = self.get_projects()
+        self.lineMagicName = lineMagicName
+        self.includeLeadingQuotesInCellMagic = includeLeadingQuotesInCellMagic
+
         #----------- WIDGETS -----------#
         # self.wg_catalog = widgets.Dropdown(options=self.catalog_names, value=None)
         self.wg_project = widgets.Dropdown(options=[p for p in self.projects])
@@ -115,6 +158,7 @@ class DataController(ABC):
 
     Should return a list of datasets for a given project (or database)
     """
+    @abstractmethod
     def get_datasets(self, database):
         pass
 
@@ -158,6 +202,7 @@ class DataController(ABC):
         if table.new == None:
             return
         f = lambda name, dtype: CB(name, dtype)
+        
         table_tuples = self.get_columns(table.new)
 
         # Partition columns are columns with a partition type, e.g. "DATE(PART.)"
@@ -180,14 +225,21 @@ class DataController(ABC):
                 cols = '*'
             else:
                 cols = "\n    , ".join([f(i.check.description, i.lab.value) for i in self.check_boxes if i.check.value])
-            print(f'{prStyle.RED}%%bigquery{prStyle.RESET}\n{prStyle.MAGENTA}SELECT{prStyle.RESET}\n    {cols} \n{prStyle.MAGENTA}FROM{prStyle.RESET} {prStyle.GREEN}{self.wg_project.value}"."{self.wg_database.value}"."{self.wg_tables.value}"{prStyle.RESET}{part_string}')
+            
+            output_string = f'{prStyle.RED}{self.lineMagicName}{prStyle.RESET}\n{prStyle.MAGENTA}SELECT{prStyle.RESET}\n    {cols} \n{prStyle.MAGENTA}FROM{prStyle.RESET} "{prStyle.GREEN}{self.wg_project.value}"."{self.wg_database.value}"."{self.wg_tables.value}"{prStyle.RESET}{part_string}'
 
+            if self.includeLeadingQuotesInCellMagic:
+                print(output_string)
+            else:
+                print(output_string.replace('"', ''))
+                
     # Search the tables dropdown
+    # https://ipywidgets.readthedocs.io/en/latest/examples/Widget%20Events.html#Debouncing
+    @debounce(0.3)
     def search_tables(self, observation):
         self.wg_tables.options = tuple([i for i in self.tables if observation['new'] in i])
         if len(self.wg_tables.options) > 0:
             self.wg_tables.index = 0
-
         else:
             self.wg_tables.index = None
 
@@ -215,6 +267,3 @@ class DataController(ABC):
             else: 
                 box.check.value = False
         self.wg_columns_container.children = [self.all_columns, self.wg_search_column]+ [i for i in self.check_boxes if observation['new'] in i.check.description]
-
-
-        
