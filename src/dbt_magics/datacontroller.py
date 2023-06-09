@@ -253,18 +253,9 @@ class DataController(ABC):
             for box in self.check_boxes:
                 box.check.value = True
 
-        self.wg_columns_container.children = [self.all_columns, self.wg_search_column] + self.check_boxes
-
     def __call__(self):
         return self.pannel
     
     # Search the columns and set the checkboxes
     def search_columns(self, observation):
-        self.wg_check_boxes.children = [i for i in self.check_boxes if observation['new'] in i.check.description]
-
-        for box in self.check_boxes:
-            if observation['new'] in box.check.description:
-                box.check.value = True
-            else: 
-                box.check.value = False
         self.wg_columns_container.children = [self.all_columns, self.wg_search_column]+ [i for i in self.check_boxes if observation['new'] in i.check.description]
