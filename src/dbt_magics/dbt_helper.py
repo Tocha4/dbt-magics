@@ -14,14 +14,23 @@ due to the different dependencies (e.g. BigQuery, Athena, SQLite)
 """
 class dbtHelper():
 
-    def __init__(self, profile_name="dbt_athena_dwh", target=None, \
-                 default_dbt_folder=os.path.join(Path().home(), "projects", "data-aws", "dbt_athena_dwh")):
-        self.DEFAULT_DBT_FOLDER = default_dbt_folder
-        self.profile_name = profile_name
-        try:
-            self.profile = self._get_profiles()[profile_name]
-        except:
-            raise BaseException(f"Profile '{profile_name}' not found. Available Profiles: {tuple(self._get_profiles().keys())}.")
+    def __init__(self, adapter_name, profile_name=None, target=None):
+        profiles = self._get_profiles()
+        outputs = [i for i in profiles if any([profiles[i]['outputs'][j]['type']==adapter_name for j in profiles[i]['outputs']])] # Search for profiles matching adapter
+        
+        if len(outputs)>1:
+            assert profile_name!=None, f'More then one profile for adapter={adapter_name}. Profiles: {outputs}\nPlease use --profiles flag like (%%athena --profiles {outputs[0]})'
+            self.profile_name = profile_name
+        elif profile_name!=None:
+            assert profile_name in tuple(profiles.keys()), f'Selected profile not in ./dbt/profiles.yml.\nAvailable profiles: {tuple(profiles.keys())}.'
+            self.profile_name = profile_name
+        elif len(outputs)==1:
+            self.profile_name = outputs[0] 
+        else:
+            assert outputs, f'No profiles found. Please use --profile flag or set (type: {adapter_name}) in ./dbt/profiles.yml'
+
+        self.profile = profiles[self.profile_name]
+
         
         self.target = (target if target else self.profile.get("target"))
         try:
@@ -29,6 +38,12 @@ class dbtHelper():
         except:
             raise BaseException(f"Profile-target '{self.target}' not found.")
         self.dbt_project = self._get_dbt_project()
+
+    @property
+    def project_folder(self):
+        pf = self.profile_config.get("project_folder", False)
+        assert pf, f'Path to the project is not set. Please set project_folder in ./dbt/profiles.yml'
+        return pf
 
     def _open_yaml(self, file_path):
         with open(file_path) as pf:
@@ -56,14 +71,14 @@ class dbtHelper():
         return self._open_yaml(profiles_file_path)
 
     def _get_dbt_project(self):
-        dbt_project_file_path = os.path.join(self.profile_config.get("project_folder", self.DEFAULT_DBT_FOLDER), "dbt_project.yml")
+        dbt_project_file_path = os.path.join(self.project_folder, "dbt_project.yml")
         return self._open_yaml(dbt_project_file_path)
 
     def _sources_and_models(self):
         SOURCES, MODELS = [], []
         # dbt_project, dbt_project_folder = get_dbt_project()
         for mp in self.dbt_project.get("model-paths"):
-            folder = os.path.join(self.profile_config.get("project_folder", self.DEFAULT_DBT_FOLDER), mp)
+            folder = os.path.join(self.project_folder, mp)
             for root, dirs, files in os.walk(folder):
                 for f in files:
                     if f.endswith(".yml"):
@@ -77,7 +92,7 @@ class dbtHelper():
                         MODELS += [{table: schema}]
                         
         for mp in self.dbt_project.get("seed-paths"):
-            folder = os.path.join(self.profile_config.get("project_folder", self.DEFAULT_DBT_FOLDER), mp)
+            folder = os.path.join(self.project_folder, mp)
             for root, dirs, files in os.walk(folder):
                 for f in files:
                     if f.endswith(".yml"):
@@ -98,7 +113,7 @@ class dbtHelper():
 
     @property
     def macros_txt(self):
-        folder = self.profile_config.get("project_folder", self.DEFAULT_DBT_FOLDER)
+        folder = self.project_folder
         macros_txt = ""
         for mp in self.dbt_project.get("macro-paths"):
             macros_files = self._get_macros(os.path.join(folder, mp))

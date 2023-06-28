@@ -98,9 +98,8 @@ class AthenaDataController(DataController):
         return TableMetadataList    
 
 class dbtHelperAdapter(dbtHelper):
-    def __init__(self, profile_name="dbt_athena_dwh", target='prod'):
-        super().__init__(profile_name=profile_name, target=target)
-        self.DEFAULT_DBT_FOLDER = os.path.join(Path().home(), "projects", "data-aws", "dbt_athena_dwh")
+    def __init__(self, adapter_name='athena', profile_name=None, target=None):
+        super().__init__(adapter_name=adapter_name, profile_name=profile_name, target=target)
         
     def source(self, schema, table):
         SOURCES, _ = self._sources_and_models()
@@ -178,8 +177,7 @@ class SQLMagics(Magics):
     @magic_arguments.argument('--n_output', '-n', default=5, help='')
     @magic_arguments.argument('--dataframe', '-df', default="df", help='The variable to return the results in.')
     @magic_arguments.argument('--parser', '-p', action='store_true', help='Translate Jinja.')
-    @magic_arguments.argument('--params', default='', help='Add additional Jinja params.')
-    @magic_arguments.argument('--profile', default='dbt_athena_dwh', help='')
+    @magic_arguments.argument('--profile', default=None, help='')
     @magic_arguments.argument('--target', default='prod', help='')
     def athena(self, line, cell=None):
         """
@@ -192,10 +190,10 @@ SELECT * FROM {{ ref('table_in_dbt_project') }}
 asdf = {'a':'value','b':'value2'}
 test_func = lambda x: x+1
 
-%%athena --params $asdf -p 
+%%athena -p 
 {{test_func(41)}}
-{{params}}
-{{params.b, params.a}}
+{{asdf}}
+{{asdf.b, asdf.a}}
 SELECT * FROM {{ ref('table_in_dbt_project') }}
 ---------------------------------------------------------------------------
 """
@@ -204,7 +202,7 @@ SELECT * FROM {{ ref('table_in_dbt_project') }}
             return dc()
         else:        
             args = magic_arguments.parse_argstring(self.athena, line)
-            self.dbt_helper = dbtHelperAdapter(args.profile, args.target)
+            self.dbt_helper = dbtHelperAdapter(profile_name=args.profile, target=args.target)
             env = Environment()
             def ipython(variable):
                 try: result = get_ipython().ev(variable)
