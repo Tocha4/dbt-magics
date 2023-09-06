@@ -188,6 +188,7 @@ class DataController(ABC):
 
     # Set the options for the dataset dropdown
     def set_dataset_options(self, observation):
+        observation = observation if type(observation)==str else observation['new']
         datasets = self.get_datasets(observation)
         self.wg_database.index = None
         self.wg_database.options = tuple(datasets)
@@ -207,7 +208,7 @@ class DataController(ABC):
         table_tuples = self.get_columns(table.new)
 
         # Partition columns are columns with a partition type, e.g. "DATE(PART.)"
-        self.partition_columns = [f(*i) for i in table_tuples if "PART." in i[1]]
+        self.partition_columns = [f(*i) for i in table_tuples if "Part." in i[1]]
         self.check_boxes = [f(*i) for i in table_tuples] 
         self.wg_columns_container.children = [self.all_columns, self.wg_search_column]+self.check_boxes
         self.wg_check_boxes.children = self.check_boxes

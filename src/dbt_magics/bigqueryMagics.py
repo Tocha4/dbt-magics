@@ -28,13 +28,11 @@ class BigQueryDataController(DataController):
 
     def get_datasets(self, database):
         DatasetMetadataList = self.get_dataset_metadata(database)
-
         return [d.dataset_id for d in DatasetMetadataList]
 
     def get_tables(self, dataset_id):
         tables = self.client.list_tables(dataset_id)  # Make an API request.
         table_ids = [table.table_id for table in tables]
-
         return table_ids
     
     def get_columns(self, table):
@@ -44,17 +42,13 @@ class BigQueryDataController(DataController):
    
     def get_projects(self):
         return [p.project_id for p in self.client.list_projects()]
-
-
-    """
-    Additional methods
-    """
     
     def get_dataset_metadata(self, ProjectName):
         self.client = bigquery.Client(ProjectName)
         datasets = list(self.client.list_datasets())  
         DatasetMetadataList = [d for d in datasets]   
         return DatasetMetadataList
+    
 
 class dbtHelperAdapter(dbtHelper):
     def __init__(self, profile_name="dwh_bigquery", target='prod', default_dbt_folder=os.path.join(Path().home(), "documents", "data-aws", "dwh_bigquery")):

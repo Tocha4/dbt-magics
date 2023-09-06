@@ -27,7 +27,7 @@ class AthenaDataController(DataController):
     """
 
     def get_datasets(self, database):
-        DatabaseList = self.list_databases(CatalogName=database)
+        DatabaseList = self.list_databases(CatalogName=database) if database else []
         return [i['Name'] for i in DatabaseList]
     
     def get_projects(self):
@@ -36,8 +36,11 @@ class AthenaDataController(DataController):
 
     
     def get_tables(self, database):
-        self.TableMetadataList = self.list_table_metadata(CatalogName=self.wg_project.value, DatabaseName=database)
-        return [i['Name'] for i in self.TableMetadataList]
+        if database:
+            self.TableMetadataList = self.list_table_metadata(CatalogName=self.wg_project.value, DatabaseName=database)
+            return [i['Name'] for i in self.TableMetadataList]
+        else: 
+            return []
     
     def get_columns(self, table):
         columns = []
