@@ -63,8 +63,9 @@ class dbtHelperAdapter(dbtHelper):
             start = time()        
             try:
                 df = pd.read_sql(sql_statement, conn)
-            except:
-                print(f"{prStyle.RED}Not a SELECT statement.")
+            except Exception as e:
+                print(f"{prStyle.RED}Not a SELECT statement.\n{e}")
+                
                 df = None
             duration = time()-start
             print(f'{prStyle.GREEN}Execution time: {int(duration//60)} min. - {duration%60:.2f} sec.')
