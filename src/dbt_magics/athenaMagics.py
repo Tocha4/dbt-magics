@@ -17,8 +17,9 @@ Implementation of the AthenaDataContoller class.
 Implement abstract methods from DataController class.
 """
 class AthenaDataController(DataController):
-    def __init__(self):
-        self.client = boto3.client('athena', region_name='eu-central-1')
+    def __init__(self, profile_name=None):
+        session = boto3.Session(profile_name=profile_name)
+        self.client = session.client('athena')
 
         super().__init__(r"%%athena")
 
@@ -155,7 +156,7 @@ class dbtHelperAdapter(dbtHelper):
                 raise BaseException(f"SQL statement FAILED for AWS Profile '{profile_name}' & Catalog '{database}' & Database '{schema}'.\nSQL: {sql_statement}\n\n{status['QueryExecution']['Status']}")
 
         DataScannedInBytes = status["QueryExecution"]["Statistics"]["DataScannedInBytes"]*0.00000095367432
-        PriceInDollar = (DataScannedInBytes*0.000005, 0.00005)[DataScannedInBytes<=10]
+        PriceInDollar = (DataScannedInBytes*0.000085, 0.00085)[DataScannedInBytes<=10]
         print(f"{prStyle.GREEN}{TotalExecutionTimeInMillis/1000:.3f} sec. {prStyle.RESET}| {prStyle.MAGENTA}{DataScannedInBytes:.3f} MB scanned {prStyle.RESET}| {prStyle.RED}{PriceInDollar:3.5f} ${prStyle.RESET}")
 
         ########### DOWNLOAD RESULTS ###########
@@ -201,7 +202,8 @@ SELECT * FROM {{ ref('table_in_dbt_project') }}
 ---------------------------------------------------------------------------
 """
         if cell is None:
-            dc = AthenaDataController()
+            profile_name = line.split('--target ')[-1] if '--target' in line else None
+            dc = AthenaDataController(profile_name=profile_name)
             return dc()
         else:        
             args = magic_arguments.parse_argstring(self.athena, line)

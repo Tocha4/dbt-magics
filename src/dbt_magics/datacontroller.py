@@ -91,6 +91,7 @@ class DataController(ABC):
         self.wg_database = widgets.Dropdown(options=[])
         self.wg_tables = widgets.Select(options=[])
         self.set_dataset_options(self.wg_project.value)
+        self.set_tables_options(self.wg_database.value)
 
         self.wg_style = widgets.HTML('''<style>
             .widget-text input[type="text"] {max-width:650px; background-color:#89d5c7; border-radius:7px; font-size: 13pt}
@@ -195,7 +196,8 @@ class DataController(ABC):
 
     # Set the options for the table dropdown
     def set_tables_options(self, observation):
-        self.tables = self.get_tables(observation["new"])
+        observation = observation if type(observation)==str else observation['new']
+        self.tables = self.get_tables(observation)
         self.wg_tables.index = None
         self.wg_tables.options = tuple(self.tables)
 
