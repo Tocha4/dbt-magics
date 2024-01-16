@@ -203,8 +203,8 @@ SELECT * FROM {{ ref('table_in_dbt_project') }}
 ---------------------------------------------------------------------------
 """
         if cell is None:
-            profile_name = line.split('--target ')[-1] if '--target' in line else None
-            dc = AthenaDataController(profile_name=profile_name)
+            target = line.split('--target ')[-1] if '--target' in line else None
+            dc = AthenaDataController(target=target)
             return dc()
         else:        
             args = magic_arguments.parse_argstring(self.athena, line)
