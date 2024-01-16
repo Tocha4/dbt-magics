@@ -17,8 +17,9 @@ Implementation of the AthenaDataContoller class.
 Implement abstract methods from DataController class.
 """
 class AthenaDataController(DataController):
-    def __init__(self, profile_name=None):
-        session = boto3.Session(profile_name=profile_name)
+    def __init__(self, target=None):
+        dbth = dbtHelperAdapter(adapter_name='athena', target=target)
+        session = boto3.Session(profile_name=dbth.profile_config['aws_profile_name'])
         self.client = session.client('athena')
 
         super().__init__(r"%%athena")
