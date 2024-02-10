@@ -1,7 +1,8 @@
 import asyncio
 from abc import ABC, abstractmethod
-
+import re
 import ipywidgets as widgets
+from pandas.io.clipboard import clipboard_set
 
 
 # Styling
@@ -120,8 +121,8 @@ class DataController(ABC):
         self.wg_check_boxes = widgets.VBox(children=[])
         self.wg_columns_container = widgets.VBox(children=[self.wg_columns_and_search, self.wg_check_boxes])
         self.wg_column = widgets.Accordion(children=[self.wg_columns_container], selected_index=None)    
-        self.select_sql = widgets.Button(description="SELECT")
-        self.select_sql_star = widgets.Button(description="SELECT ALL")
+        self.select_sql = widgets.Button(description="SELECT", icon='fa-copy')
+        self.select_sql_star = widgets.Button(description="SELECT ALL", icon='fa-copy')
         self.select_box = widgets.VBox(children=[self.select_sql, self.select_sql_star])
         self.output = widgets.Output()
         self.output.add_class("anton-enns")
@@ -231,11 +232,11 @@ class DataController(ABC):
                 cols = "\n    , ".join([f(i.check.description, i.lab.value) for i in self.check_boxes if i.check.value])
             
             output_string = f'{prStyle.RED}{self.lineMagicName}{prStyle.RESET}\n{prStyle.MAGENTA}SELECT{prStyle.RESET}\n    {cols} \n{prStyle.MAGENTA}FROM{prStyle.RESET} {prStyle.GREEN}"{self.wg_project.value}"."{self.wg_database.value}"."{self.wg_tables.value}"{prStyle.RESET}{part_string}'
+            
+            statement = output_string if self.includeLeadingQuotesInCellMagic else output_string.replace('"', '')
+            print(statement)
+            clipboard_set(re.sub(r'\x1b\[\d+m', '', statement, count=0, flags=0))
 
-            if self.includeLeadingQuotesInCellMagic:
-                print(output_string)
-            else:
-                print(output_string.replace('"', ''))
                 
     # Search the tables dropdown
     # https://ipywidgets.readthedocs.io/en/latest/examples/Widget%20Events.html#Debouncing
