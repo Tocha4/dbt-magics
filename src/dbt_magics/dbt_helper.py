@@ -50,14 +50,16 @@ class dbtHelper():
             results = yaml.safe_load(pf)
         return results
 
-    def _len_check(self, source, table_name):
-        if len(source)>1: 
-            raise BaseException(f"Conflicting table name: {table_name}. Sources: {source}.")
-        elif len(source)==0:
-            raise BaseException(f"Not found table name {table_name}.")
-        elif len(source)==1:
-            source = source[0]
-        return source
+    def _search_for_source_table(self, SOURCES, target_schema, target_table, default_database):
+        match = False
+        for entry in SOURCES:
+            database, name, tables = entry.get('database', default_database), entry.get("name"), entry['tables']
+            for table in tables:
+                if (name==target_schema and table['name']==target_table):
+                    match = True
+                    break
+            if match: break
+        return dict(database=database, schema=name, table=table['name']) if match else dict(database=database, schema=name, table="<! TABLE NOT FOUND in dbt project !>")
 
     def _get_macros(self, folder):
         macro_files = []

@@ -109,21 +109,8 @@ class dbtHelperAdapter(dbtHelper):
     def source(self, schema, table):
         SOURCES, _ = self._sources_and_models()
         default_database = [i for i in map(self.profile_config.get, ['dbname', 'database', 'dataset']) if i][0]
-        source = [
-            {
-                "database":item.get('database', default_database),
-                "schema": item.get("name"),
-                "table": table if table in [i["name"] for i in item.get("tables")] else "<! TABLE NOT FOUND in dbt project !>"
-
-            } for item in SOURCES if item.get("name")==schema
-        ]
-        source = self._len_check(source, table_name=table)
-
-        if source["database"]:
-            results = '"{database}"."{schema}"."{table}"'.format(database=source['database'], schema=source['schema'], table=source['table'])
-        else:
-            results = '"{schema}"."{table}"'.format(schema=source['schema'], table=source['table'])
-        return results
+        source = self._search_for_source_table(SOURCES, target_schema=schema, target_table=table, default_database=default_database)
+        return '"{database}"."{schema}"."{table}"'.format(database=source['database'], schema=source['schema'], table=source['table'])
 
     def ref(self, table_name):
         custom_schema = self._get_custom_schema(table_name)
