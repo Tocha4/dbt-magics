@@ -103,6 +103,15 @@ class dbtHelper():
 
         return (SOURCES, MODELS)
 
+    def _len_check(self, source, table_name):
+        if len(source)>1: 
+            raise BaseException(f"Conflicting table name: {table_name}. Sources: {source}.")
+        elif len(source)==0:
+            raise BaseException(f"Not found table name {table_name}.")
+        elif len(source)==1:
+            source = source[0]
+        return source
+        
     def _get_custom_schema(self, table_name):
         _, MODELS = self._sources_and_models()
         table = [i for i in MODELS if i.get(table_name, False)]
