@@ -17,8 +17,10 @@ Implementation of the AthenaDataContoller class.
 Implement abstract methods from DataController class.
 """
 class AthenaDataController(DataController):
-    def __init__(self):
-        self.client = boto3.client('athena', region_name='eu-central-1')
+    def __init__(self, target=None):
+        dbth = dbtHelperAdapter(adapter_name='athena', target=target)
+        session = boto3.Session(profile_name=dbth.profile_config['aws_profile_name'])
+        self.client = session.client('athena')
 
         super().__init__(r"%%athena")
 
@@ -107,21 +109,8 @@ class dbtHelperAdapter(dbtHelper):
     def source(self, schema, table):
         SOURCES, _ = self._sources_and_models()
         default_database = [i for i in map(self.profile_config.get, ['dbname', 'database', 'dataset']) if i][0]
-        source = [
-            {
-                "database":item.get('database', default_database),
-                "schema": item.get("name"),
-                "table": table if table in [i["name"] for i in item.get("tables")] else "<! TABLE NOT FOUND in dbt project !>"
-
-            } for item in SOURCES if item.get("name")==schema
-        ]
-        source = self._len_check(source, table_name=table)
-
-        if source["database"]:
-            results = '"{database}"."{schema}"."{table}"'.format(database=source['database'], schema=source['schema'], table=source['table'])
-        else:
-            results = '"{schema}"."{table}"'.format(schema=source['schema'], table=source['table'])
-        return results
+        source = self._search_for_source_table(SOURCES, target_schema=schema, target_table=table, default_database=default_database)
+        return '"{database}"."{schema}"."{table}"'.format(database=source['database'], schema=source['schema'], table=source['table'])
 
     def ref(self, table_name):
         custom_schema = self._get_custom_schema(table_name)
@@ -155,7 +144,7 @@ class dbtHelperAdapter(dbtHelper):
                 raise BaseException(f"SQL statement FAILED for AWS Profile '{profile_name}' & Catalog '{database}' & Database '{schema}'.\nSQL: {sql_statement}\n\n{status['QueryExecution']['Status']}")
 
         DataScannedInBytes = status["QueryExecution"]["Statistics"]["DataScannedInBytes"]*0.00000095367432
-        PriceInDollar = (DataScannedInBytes*0.000005, 0.00005)[DataScannedInBytes<=10]
+        PriceInDollar = (DataScannedInBytes*0.000085, 0.00085)[DataScannedInBytes<=10]
         print(f"{prStyle.GREEN}{TotalExecutionTimeInMillis/1000:.3f} sec. {prStyle.RESET}| {prStyle.MAGENTA}{DataScannedInBytes:.3f} MB scanned {prStyle.RESET}| {prStyle.RED}{PriceInDollar:3.5f} ${prStyle.RESET}")
 
         ########### DOWNLOAD RESULTS ###########
@@ -201,7 +190,8 @@ SELECT * FROM {{ ref('table_in_dbt_project') }}
 ---------------------------------------------------------------------------
 """
         if cell is None:
-            dc = AthenaDataController()
+            target = line.split('--target ')[-1] if '--target' in line else None
+            dc = AthenaDataController(target=target)
             return dc()
         else:        
             args = magic_arguments.parse_argstring(self.athena, line)

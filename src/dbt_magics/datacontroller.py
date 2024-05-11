@@ -1,7 +1,8 @@
 import asyncio
 from abc import ABC, abstractmethod
-
+import re
 import ipywidgets as widgets
+from pandas.io.clipboard import clipboard_set
 
 
 # Styling
@@ -91,6 +92,7 @@ class DataController(ABC):
         self.wg_database = widgets.Dropdown(options=[])
         self.wg_tables = widgets.Select(options=[])
         self.set_dataset_options(self.wg_project.value)
+        self.set_tables_options(self.wg_database.value)
 
         self.wg_style = widgets.HTML('''<style>
             .widget-text input[type="text"] {max-width:650px; background-color:#89d5c7; border-radius:7px; font-size: 13pt}
@@ -119,8 +121,8 @@ class DataController(ABC):
         self.wg_check_boxes = widgets.VBox(children=[])
         self.wg_columns_container = widgets.VBox(children=[self.wg_columns_and_search, self.wg_check_boxes])
         self.wg_column = widgets.Accordion(children=[self.wg_columns_container], selected_index=None)    
-        self.select_sql = widgets.Button(description="SELECT")
-        self.select_sql_star = widgets.Button(description="SELECT ALL")
+        self.select_sql = widgets.Button(description="SELECT", icon='fa-copy')
+        self.select_sql_star = widgets.Button(description="SELECT ALL", icon='fa-copy')
         self.select_box = widgets.VBox(children=[self.select_sql, self.select_sql_star])
         self.output = widgets.Output()
         self.output.add_class("anton-enns")
@@ -195,7 +197,8 @@ class DataController(ABC):
 
     # Set the options for the table dropdown
     def set_tables_options(self, observation):
-        self.tables = self.get_tables(observation["new"])
+        observation = observation if type(observation)==str else observation['new']
+        self.tables = self.get_tables(observation)
         self.wg_tables.index = None
         self.wg_tables.options = tuple(self.tables)
 
@@ -229,11 +232,11 @@ class DataController(ABC):
                 cols = "\n    , ".join([f(i.check.description, i.lab.value) for i in self.check_boxes if i.check.value])
             
             output_string = f'{prStyle.RED}{self.lineMagicName}{prStyle.RESET}\n{prStyle.MAGENTA}SELECT{prStyle.RESET}\n    {cols} \n{prStyle.MAGENTA}FROM{prStyle.RESET} {prStyle.GREEN}"{self.wg_project.value}"."{self.wg_database.value}"."{self.wg_tables.value}"{prStyle.RESET}{part_string}'
+            
+            statement = output_string if self.includeLeadingQuotesInCellMagic else output_string.replace('"', '')
+            print(statement)
+            clipboard_set(re.sub(r'\x1b\[\d+m', '', statement, count=0, flags=0))
 
-            if self.includeLeadingQuotesInCellMagic:
-                print(output_string)
-            else:
-                print(output_string.replace('"', ''))
                 
     # Search the tables dropdown
     # https://ipywidgets.readthedocs.io/en/latest/examples/Widget%20Events.html#Debouncing
