@@ -80,10 +80,11 @@ class DataController(ABC):
     """
     lineMagicName: The name of the line magic that is displayed in the output widget, e.g. %bigquery or %athena
     """
-    def __init__(self, lineMagicName, includeLeadingQuotesInCellMagic=True):
+    def __init__(self, lineMagicName, includeLeadingQuotesInCellMagic=True, table_name_quote_sign='"'):
         self.projects = self.get_projects()
         self.lineMagicName = lineMagicName
         self.includeLeadingQuotesInCellMagic = includeLeadingQuotesInCellMagic
+        self.table_name_quote_sign = table_name_quote_sign
 
         #----------- WIDGETS -----------#
         # self.wg_catalog = widgets.Dropdown(options=self.catalog_names, value=None)
@@ -233,7 +234,7 @@ class DataController(ABC):
             
             output_string = f'{prStyle.RED}{self.lineMagicName}{prStyle.RESET}\n{prStyle.MAGENTA}SELECT{prStyle.RESET}\n    {cols} \n{prStyle.MAGENTA}FROM{prStyle.RESET} {prStyle.GREEN}"{self.wg_project.value}"."{self.wg_database.value}"."{self.wg_tables.value}"{prStyle.RESET}{part_string}'
             
-            statement = output_string if self.includeLeadingQuotesInCellMagic else output_string.replace('"', '')
+            statement = output_string if self.includeLeadingQuotesInCellMagic else output_string.replace('"', self.table_name_quote_sign)
             print(statement)
             clipboard_set(re.sub(r'\x1b\[\d+m', '', statement, count=0, flags=0))
 

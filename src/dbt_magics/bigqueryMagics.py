@@ -20,7 +20,7 @@ class BigQueryDataController(DataController):
         # If you want to use a different project by default, set it here.
         self.client =  bigquery.Client()
 
-        super().__init__(r"%%bigquery", includeLeadingQuotesInCellMagic=False)
+        super().__init__(r"%%bigquery", includeLeadingQuotesInCellMagic=False, table_name_quote_sign='`')
 
     """
     Implemented Abstract methods
@@ -33,7 +33,7 @@ class BigQueryDataController(DataController):
     def get_tables(self, dataset_id):
         tables = self.client.list_tables(dataset_id)  # Make an API request.
         table_ids = [table.table_id for table in tables]
-        return table_ids
+        return table_ids if len(table_ids)>1 else ['aaaa']+table_ids
     
     def get_columns(self, table):
         full_table_id = f"{self.wg_project.value}.{self.wg_database.value}.{table}"
@@ -51,8 +51,8 @@ class BigQueryDataController(DataController):
     
 
 class dbtHelperAdapter(dbtHelper):
-    def __init__(self, profile_name="dwh_bigquery", target='prod', default_dbt_folder=os.path.join(Path().home(), "documents", "data-aws", "dwh_bigquery")):
-        super().__init__(profile_name=profile_name, target=target, default_dbt_folder=default_dbt_folder)
+    def __init__(self, adapter_name='bigquery', profile_name="poky", target='prod'):
+        super().__init__(adapter_name=adapter_name, profile_name=profile_name, target=target)
         
     def source(self, schema_name, table):
         SOURCES, _ = self._sources_and_models()
@@ -84,8 +84,8 @@ class SQLMagics(Magics):
     @magic_arguments.argument('--dataframe', '-df', default="df", help='The variable to return the results in.')
     @magic_arguments.argument('--parser', '-p', action='store_true', help='Translate Jinja.')
     @magic_arguments.argument('--params', default='', help='Add additional Jinja params.')
-    @magic_arguments.argument('--profile', default='dwh_bigquery', help='')
-    @magic_arguments.argument('--target', default='dev', help='')
+    @magic_arguments.argument('--profile', default='poky', help='')
+    @magic_arguments.argument('--target', default='prod', help='')
     def bigquery(self, line, cell=None):
         """
         ---------------------------------------------------------------------------
@@ -108,7 +108,7 @@ class SQLMagics(Magics):
 
         args = magic_arguments.parse_argstring(self.bigquery, line)
 
-        self.dbt_helper = dbtHelperAdapter(args.profile, args.target)
+        self.dbt_helper = dbtHelperAdapter('bigquery', args.profile, args.target)
         if args.params!='':
             params_var = ' {%-set params='+args.params+' -%}'
         else:
@@ -141,7 +141,7 @@ class SQLMagics(Magics):
             return df
 
 def load_ipython_extension(ipython):
-    js = """IPython.CodeCell.options_default.highlight_modes['magic_sql'] = {'reg':[/^%%(biggy)/]};
+    js = """IPython.CodeCell.options_default.highlight_modes['magic_sql'] = {'reg':[/^%%(bigquery)/]};
     IPython.notebook.events.one('kernel_ready.Kernel', function(){
         IPython.notebook.get_cells().map(function(cell){
             if (cell.cell_type == 'code'){ cell.auto_highlight(); } }) ;
