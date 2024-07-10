@@ -6,7 +6,7 @@ import pandas as pd
 from google.cloud import bigquery
 from IPython.core import display, magic_arguments
 from IPython.core.magic import Magics, line_cell_magic, magics_class
-from jinja2 import Template
+from jinja2 import Environment, Template, meta
 
 from dbt_magics.datacontroller import DataController
 from dbt_magics.dbt_helper import dbtHelper
@@ -55,17 +55,10 @@ class dbtHelperAdapter(dbtHelper):
         super().__init__(adapter_name=adapter_name, profile_name=profile_name, target=target)
         
     def source(self, schema_name, table):
-        SOURCES, _ = self._sources_and_models()
-        default_database = [i for i in map(self.profile_config.get, ['dbname', 'database', 'dataset']) if i][0]
-        source = [
-            {
-                "database":item.get('database', default_database),
-                "project": item.get('project', self.profile_config.get('project')),
-                "table": table if table in [i["name"] for i in item.get("tables")] else "<! TABLE NOT FOUND in dbt project !>"
-            } for item in SOURCES if item.get("name")==schema_name
-        ]
-        source = self._len_check(source, table_name=table)
-        results = '`{project}`.`{database}`.`{table}`'.format(database=source['database'], project=source['project'], table=source['table'])
+        SOURCES, _ = self._sources_and_models()        
+        default_project = [i for i in map(self.profile_config.get, ['project', 'dbname', 'database', 'dataset']) if i][0]
+        source = self._search_for_source_table(SOURCES, target_schema=schema_name, target_table=table, default_database=default_project)
+        results = '`{project}`.`{schema}`.`{table}`'.format(schema=source['schema'], project=default_project, table=source['table'])
         return results
 
     def ref(self, table_name):
@@ -109,14 +102,20 @@ class SQLMagics(Magics):
         args = magic_arguments.parse_argstring(self.bigquery, line)
 
         self.dbt_helper = dbtHelperAdapter('bigquery', args.profile, args.target)
-        if args.params!='':
-            params_var = ' {%-set params='+args.params+' -%}'
-        else:
-            params_var = ''
+
+        env = Environment()
+        def ipython(variable):
+            try: result = get_ipython().ev(variable)
+            except: result = False
+            return result
+
+        kwargs = {i:ipython(i) for i in meta.find_undeclared_variables(env.parse(cell)) if ipython(i)}
 
         macros_txt = self.dbt_helper.macros_txt
-        jinja_statement = params_var+macros_txt+cell
-        statement = Template(jinja_statement).render(source=self.dbt_helper.source, ref=self.dbt_helper.ref).strip()
+        jinja_statement = macros_txt+cell
+        statement = Template(jinja_statement).render(source=self.dbt_helper.source, ref=self.dbt_helper.ref, var=self.dbt_helper.var, **kwargs).strip()
+
+
         start = time()
         if args.parser:
             print(statement)
