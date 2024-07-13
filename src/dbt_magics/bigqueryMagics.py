@@ -8,7 +8,7 @@ from IPython.core import display, magic_arguments
 from IPython.core.magic import Magics, line_cell_magic, magics_class
 from jinja2 import Environment, Template, meta
 
-from dbt_magics.datacontroller import DataController
+from dbt_magics.datacontroller import DataController, debounce
 from dbt_magics.dbt_helper import dbtHelper
 
 """
@@ -33,7 +33,7 @@ class BigQueryDataController(DataController):
     def get_tables(self, dataset_id):
         tables = self.client.list_tables(dataset_id)  # Make an API request.
         table_ids = [table.table_id for table in tables]
-        return table_ids if len(table_ids)>1 else ['aaaa']+table_ids
+        return table_ids
     
     def get_columns(self, table):
         full_table_id = f"{self.wg_project.value}.{self.wg_database.value}.{table}"
@@ -121,7 +121,7 @@ class SQLMagics(Magics):
             print(statement)
         else:
             #--------------------------------------------- Start
-            client = bigquery.Client()
+            client = bigquery.Client(project=self.dbt_helper.profile_config.get("project"), location=self.dbt_helper.profile_config.get("location"))
             results = client.query(statement)
             flat_results = [dict(row) for row in results.result()]
             df = pd.DataFrame(flat_results)
