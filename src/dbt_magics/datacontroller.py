@@ -190,6 +190,7 @@ class DataController(ABC):
     """ Additional methods """
 
     # Set the options for the dataset dropdown
+    @debounce(0.3)
     def set_dataset_options(self, observation):
         observation = observation if type(observation)==str else observation['new']
         datasets = self.get_datasets(observation)
@@ -197,6 +198,7 @@ class DataController(ABC):
         self.wg_database.options = tuple(datasets)
 
     # Set the options for the table dropdown
+    @debounce(0.3)
     def set_tables_options(self, observation):
         observation = observation if type(observation)==str else observation['new']
         self.tables = self.get_tables(observation)
