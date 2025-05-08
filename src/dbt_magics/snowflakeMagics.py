@@ -154,7 +154,8 @@ class SQLMagics(Magics):
         ---------------------------------------------------------------------------
         """
         if cell == None:
-            dc = SnowflakeDataController()
+            target = line.split('--target ')[-1] if '--target' in line else None
+            dc = SnowflakeDataController(target=target)
             return dc()
 
         args = magic_arguments.parse_argstring(self.snowflake, line)
