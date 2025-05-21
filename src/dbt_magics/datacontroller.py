@@ -245,7 +245,7 @@ class DataController(ABC):
     # https://ipywidgets.readthedocs.io/en/latest/examples/Widget%20Events.html#Debouncing
     @debounce(0.3)
     def search_tables(self, observation):
-        self.wg_tables.options = tuple([i for i in self.tables if observation['new'] in i])
+        self.wg_tables.options = tuple([i for i in self.tables if observation['new'].lower() in i.lower()])
         if len(self.wg_tables.options) > 0:
             self.wg_tables.index = 0
         else:
