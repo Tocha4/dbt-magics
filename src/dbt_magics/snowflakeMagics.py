@@ -53,15 +53,18 @@ class SnowflakeDataController(DataController):
         
     def get_tables(self,schema):
         tables = self.root.databases[self.wg_project.value].schemas[schema].tables.iter()
-        return [table.name for table in tables]
+        views = self.root.databases[self.wg_project.value].schemas[schema].views.iter()
+        return [table.name+' (t)' for table in tables] + [view.name+' (v)' for view in views]
         
     def get_columns(self, table):
-        table = self.root.databases[self.wg_project.value].schemas[self.wg_database.value].tables[table].fetch()
+        table_name, table_type = table.split(' (')
+        if table_type[0] == 't':
+            table = self.root.databases[self.wg_project.value].schemas[self.wg_database.value].tables[table_name].fetch()
+        elif table_type[0] == 'v':
+            table = self.root.databases[self.wg_project.value].schemas[self.wg_database.value].views[table_name].fetch()
         return [(col.name, col.datatype) for col in table.columns]
     
-
-    
-    
+        
     def get_metadata(self,connection_parameters):
         return self.dbt_helper.snowflake_connection_query_execution(connection_parameters)
 
