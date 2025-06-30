@@ -234,7 +234,7 @@ class DataController(ABC):
             else:
                 cols = "\n    , ".join([f(i.check.description, i.lab.value) for i in self.check_boxes if i.check.value])
             
-            output_string = f'{prStyle.RED}{self.lineMagicName}{prStyle.RESET}\n{prStyle.MAGENTA}SELECT{prStyle.RESET}\n    {cols} \n{prStyle.MAGENTA}FROM{prStyle.RESET} {prStyle.GREEN}"{self.wg_project.value}"."{self.wg_database.value}"."{self.wg_tables.value.split(' (')[0]}"{prStyle.RESET}{part_string}'
+            output_string = f'{prStyle.RED}{self.lineMagicName}{prStyle.RESET}\n{prStyle.MAGENTA}SELECT{prStyle.RESET}\n    {cols} \n{prStyle.MAGENTA}FROM{prStyle.RESET} {prStyle.GREEN}"{self.wg_project.value}"."{self.wg_database.value}"."{self.wg_tables.value.split(" (")[0]}"{prStyle.RESET}{part_string}'
             
             statement = output_string if self.includeLeadingQuotesInCellMagic else output_string.replace('"', self.table_name_quote_sign)
             print(statement)
