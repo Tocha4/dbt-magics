@@ -195,7 +195,7 @@ class SQLMagics(Magics):
     @magic_arguments.argument('--profile', default=None, help='')
     @magic_arguments.argument('--target', default='prod', help='')
     @magic_arguments.argument('--export_duckdb', '-ddb', action='store_true', help='Export DataFrame to DuckDB using table name from dbt ref().')
-    @magic_arguments.argument('--duckdb_mode', '-ddb_mode', default='replace', choices=['replace', 'append'], help='DuckDB export mode: replace (default) or append.')
+    @magic_arguments.argument('--duckdb_mode', '-mode', default='replace', choices=['replace', 'append'], help='DuckDB export mode: replace (default) or append.')
     def athena(self, line, cell=None):
         """
 ---------------------------------------------------------------------------

@@ -215,7 +215,7 @@ class DuckDBHelper:
                 pass
 
 
-def export_dataframe_to_duckdb(df, table_name, profile_name=None, target=None, adapter_name='snowflake', if_exists='replace'):
+def export_dataframe_to_duckdb_with_profile(df, table_name, profile_name=None, target=None, adapter_name='snowflake', if_exists='replace'):
     """
     Standalone function to export any DataFrame to DuckDB using dbt profile configuration
     
@@ -228,9 +228,9 @@ def export_dataframe_to_duckdb(df, table_name, profile_name=None, target=None, a
     - if_exists: 'replace' (default) or 'append'
     
     Usage:
-    export_dataframe_to_duckdb(my_df, 'my_table')
-    export_dataframe_to_duckdb(my_df, 'my_table', if_exists='append')
-    export_dataframe_to_duckdb(my_df, 'my_table', adapter_name='athena')
+    export_dataframe_to_duckdb_with_profile(my_df, 'my_table')
+    export_dataframe_to_duckdb_with_profile(my_df, 'my_table', if_exists='append')
+    export_dataframe_to_duckdb_with_profile(my_df, 'my_table', adapter_name='athena')
     """
     from dbt_magics.dbt_helper import dbtHelper
     
