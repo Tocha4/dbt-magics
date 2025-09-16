@@ -74,6 +74,88 @@ The image below shows an example of the interface for the cell magic.
 %bigquery?
 ```
 
+## Snowflake Magics
+Snowflake magics work similarly to other magics. First load the magics:
+
+```python
+# load the magics for snowflake into your notebook
+%load_ext dbt_magics.snowflakeMagics
+```
+
+### Cell Magic
+```python
+%%snowflake
+SELECT * FROM my_database.my_schema.my_table
+```
+
+### DuckDB Export Feature
+The Snowflake magics include a built-in feature to export query results to DuckDB. This is useful for local analytics and data storage.
+
+#### Configuration
+Add DuckDB configuration to your dbt `profiles.yml`:
+
+```yaml
+your_profile:
+  outputs:
+    dev:
+      type: snowflake
+      # ... your snowflake config
+      duckdb:
+        path: /path/to/your/database.duckdb
+        schema: dbt_dev  # Schema name for dbt tables in DuckDB
+```
+
+Or create a separate DuckDB profile:
+
+```yaml
+duckdb_profile:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: /path/to/your/database.duckdb
+      schema: dbt_analytics  # Default schema for dbt tables
+```
+
+#### Usage Examples
+
+**Export query results to DuckDB (replace table):**
+```python
+%%snowflake --export_duckdb
+SELECT * FROM {{ ref('some_model') }}
+```
+This will create the table as `dbt_dev.some_model` (using the schema from your profile and table name from ref()).
+
+**Append to existing DuckDB table:**
+```python
+%%snowflake --export_duckdb --duckdb_mode append
+SELECT * FROM {{ ref('some_model') }}
+```
+
+**Export any DataFrame to DuckDB:**
+```python
+# For standalone DataFrame export
+from dbt_magics.snowflakeMagics import export_dataframe_to_duckdb
+
+# Replace table (default) - will use dbt naming conventions
+export_dataframe_to_duckdb(my_df, 'my_model')
+
+# Append to table
+export_dataframe_to_duckdb(my_df, 'my_model', if_exists='append')
+```
+
+**Schema and Table Naming:**
+- Tables are created using dbt naming conventions: `schema.table_name`
+- Schema comes from the `duckdb.schema` setting in your profiles.yml
+- Table name is automatically extracted from the `ref()` function in your SQL
+- If no schema is specified, it falls back to dbt's custom schema logic or the default schema
+- **Important**: Your SQL must contain a `ref('table_name')` for automatic table naming to work
+
+### Docstring
+```python
+%snowflake?
+```
+
 ## Contributing
 In order to edit the code, please install the package in editable mode and run the command below:
 ```bash

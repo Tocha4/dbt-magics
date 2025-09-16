@@ -1,0 +1,45 @@
+# Example sources.yml file showing the schema issue
+
+version: 2
+
+sources:
+  # Source 1: Schema name different from source name
+  - name: raw_data
+    schema: landing_zone  # Actual schema in database
+    database: raw_db      # Optional: override database
+    tables:
+      - name: customers
+      - name: orders
+      - name: products
+  
+  # Source 2: Schema name same as source name (works currently)
+  - name: staging
+    # No schema specified, so it should use 'staging' as schema name
+    tables:
+      - name: dim_customers
+      - name: fact_sales
+  
+  # Source 3: Multiple sources with different schemas
+  - name: external_api
+    schema: api_data      # Different schema name
+    tables:
+      - name: weather_data
+      - name: market_data
+  
+  # Source 4: With custom schema and database
+  - name: third_party
+    schema: vendor_schema
+    database: vendor_db
+    tables:
+      - name: vendor_table_1
+      - name: vendor_table_2
+
+# Current behavior (WRONG):
+# source('raw_data', 'customers') -> raw_db.raw_data.customers
+# But it should be: raw_db.landing_zone.customers
+
+# Expected behavior (CORRECT):
+# source('raw_data', 'customers') -> raw_db.landing_zone.customers
+# source('staging', 'dim_customers') -> default_db.staging.dim_customers  
+# source('external_api', 'weather_data') -> default_db.api_data.weather_data
+# source('third_party', 'vendor_table_1') -> vendor_db.vendor_schema.vendor_table_1

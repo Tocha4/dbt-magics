@@ -18,7 +18,12 @@ keywords = ["dbt", "SQL", "magic"]
 dependencies = [
     "dbt-core",
     "pandas",
-    "ipywidgets"
+    "ipywidgets",
+    "duckdb",
+    "charset-normalizer",
+    "requests",
+    "jinja2",
+    "pyyaml"
 ]
 requires-python = ">=3.9"
 

@@ -9,6 +9,7 @@ from snowflake.snowpark import Session
 from snowflake.core import Root
 from snowflake.core.database import Database
 import pandas as pd
+import duckdb
 from IPython import get_ipython
 from IPython.core import display, magic_arguments
 from IPython.core.magic import Magics, line_cell_magic, magics_class
@@ -16,6 +17,7 @@ from jinja2 import Environment, Template, meta
 
 from dbt_magics.datacontroller import DataController, prStyle
 from dbt_magics.dbt_helper import dbtHelper
+from dbt_magics.duckdb_helper import DuckDBHelper
 
 """
 Implementation of the AthenaDataContoller class.
@@ -72,6 +74,7 @@ class SnowflakeDataController(DataController):
 class dbtHelperAdapter(dbtHelper):
     def __init__(self, adapter_name='snowflake', profile_name= None, target=None):
         super().__init__(adapter_name=adapter_name, profile_name=profile_name, target=target)
+        self.duckdb_helper = DuckDBHelper(self)
     
         
     def source(self, schema, table):
@@ -85,6 +88,29 @@ class dbtHelperAdapter(dbtHelper):
         custom_schema = self._get_custom_schema(table_name)
         #print(f'custom_schema: value {custom_schema}')
         return (f'{custom_schema}.{table_name}')
+    
+    # DuckDB methods - delegated to DuckDBHelper
+    def get_duckdb_config(self):
+        """Get DuckDB configuration from dbt profiles"""
+        return self.duckdb_helper.get_duckdb_config()
+    
+    def check_duckdb_availability(self):
+        """Check if DuckDB database is available and not locked"""
+        return self.duckdb_helper.check_duckdb_availability()
+    
+    def get_duckdb_table_name(self, table_name):
+        """Generate DuckDB table name using dbt naming conventions"""
+        return self.duckdb_helper.get_duckdb_table_name(table_name)
+    
+    def extract_ref_table_name(self, sql_statement):
+        """Extract table name from dbt ref() function in SQL statement"""
+        return self.duckdb_helper.extract_ref_table_name(sql_statement)
+    
+    def export_to_duckdb(self, df, table_name, if_exists='replace'):
+        """Export DataFrame to DuckDB using dbt naming conventions"""
+        return self.duckdb_helper.export_to_duckdb(df, table_name, if_exists)
+    
+    
     
     def snowflake_connection_query_execution(self, connection_parameters,statement=None):
         session = Session.builder.configs(connection_parameters).create()
@@ -134,12 +160,14 @@ class SQLMagics(Magics):
 
     @line_cell_magic
     @magic_arguments.magic_arguments()
-    @magic_arguments.argument('--n_output', '-n', default=5, help='')
+    @magic_arguments.argument('--n_output', '-n', default=5, help='Number of rows to display. Set to 0 to suppress output display.')
     @magic_arguments.argument('--dataframe', '-df', default="df", help='The variable to return the results in.')
     @magic_arguments.argument('--parser', '-p', action='store_true', help='Translate Jinja.')
     @magic_arguments.argument('--params', default='', help='Add additional Jinja params.')
     @magic_arguments.argument('--profile', default='dbt_snowflake_dwh', help='')
     @magic_arguments.argument('--target', default='dev', help='')
+    @magic_arguments.argument('--export_duckdb', '-ddb', action='store_true', help='Export DataFrame to DuckDB using table name from dbt ref().')
+    @magic_arguments.argument('--duckdb_mode', '-mode', default='replace', choices=['replace', 'append'], help='DuckDB export mode: replace (default) or append.')
     def snowflake(self, line, cell=None):
         """
         ---------------------------------------------------------------------------
@@ -154,6 +182,29 @@ class SQLMagics(Magics):
         %%snowflake -p 
         {{test_func(41)}}
         SELECT * FROM {{ ref('table_in_dbt_project') }}
+        ---------------------------------------------------------------------------
+        ---------------------------------------------------------------------------
+        Export to DuckDB:
+        
+        %%snowflake --export_duckdb
+        SELECT * FROM {{ ref('my_model') }}
+        
+        %%snowflake --export_duckdb --duckdb_mode append
+        SELECT * FROM {{ ref('my_model') }}
+        
+        Output Control:
+        
+        %%snowflake -n 10
+        SELECT * FROM {{ ref('my_model') }}  # Shows first 10 rows
+        
+        %%snowflake -n 0
+        SELECT * FROM {{ ref('my_model') }}  # No output displayed (silent execution)
+        
+        Note: 
+        - Table name is automatically extracted from ref() function
+        - DuckDB lock status is checked before query execution
+        - Query is skipped if DuckDB database is locked
+        - Use -n 0 to suppress output display while still storing in dataframe variable
         ---------------------------------------------------------------------------
         """
         if cell == None:
@@ -182,6 +233,11 @@ class SQLMagics(Magics):
         if args.parser:
             print(statement)
         else:
+            # Check DuckDB availability before executing query if export is requested
+            if args.export_duckdb:
+                if not self.dbt_helper.check_duckdb_availability():
+                    print(f"{prStyle.RED}Aborting query execution due to DuckDB unavailability.{prStyle.RESET}")
+                    return None
             
             connection_parameters= dict(user = self.dbt_helper.profile_config.get("user"),
                                authenticator = self.dbt_helper.profile_config.get("authenticator"),
@@ -195,8 +251,43 @@ class SQLMagics(Magics):
             df = self.dbt_helper.snowflake_connection_query_execution(connection_parameters,statement)
 
             self.shell.user_ns[args.dataframe] = df
-            df = df.head(int(args.n_output)) if type(df)==pd.DataFrame else None
-            return df 
+            
+            # Export to DuckDB if requested
+            if args.export_duckdb and df is not None:
+                # Extract table name from ref() in the original cell content
+                table_name = self.dbt_helper.extract_ref_table_name(cell)
+                
+                if table_name:
+                    self.dbt_helper.export_to_duckdb(df, table_name, args.duckdb_mode)
+                else:
+                    print(f"{prStyle.RED}No ref() function found in SQL. Please use ref('table_name') to specify the table for DuckDB export.{prStyle.RESET}")
+            
+            # Handle n_output behavior: if 0, don't display dataframe
+            if int(args.n_output) == 0:
+                return None
+            else:
+                df = df.head(int(args.n_output)) if type(df)==pd.DataFrame else None
+                return df 
+        
+def export_dataframe_to_duckdb(df, table_name, profile_name=None, target=None, if_exists='replace'):
+    """
+    Standalone function to export any DataFrame to DuckDB using dbt profile configuration
+    
+    Parameters:
+    - df: pandas DataFrame to export
+    - table_name: name of the table in DuckDB
+    - profile_name: dbt profile name (optional)
+    - target: dbt target (optional) 
+    - if_exists: 'replace' (default) or 'append'
+    
+    Usage:
+    export_dataframe_to_duckdb(my_df, 'my_table')
+    export_dataframe_to_duckdb(my_df, 'my_table', if_exists='append')
+    """
+    helper = dbtHelperAdapter('snowflake', profile_name, target)
+    helper.export_to_duckdb(df, table_name, if_exists)
+
+
 def load_ipython_extension(ipython):
     js = """IPython.CodeCell.options_default.highlight_modes['magic_sql'] = {'reg':[/^%%(snowflake)/]};
     IPython.notebook.events.one('kernel_ready.Kernel', function(){

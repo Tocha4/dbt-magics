@@ -53,13 +53,23 @@ class dbtHelper():
     def _search_for_source_table(self, SOURCES, target_schema, target_table, default_database):
         match = False
         for entry in SOURCES:
-            database, name, tables = entry.get('database', default_database), entry.get("name"), entry['tables']
+            database = entry.get('database', default_database)
+            source_name = entry.get("name")
+            # Use 'schema' property if specified, otherwise fall back to source name
+            schema_name = entry.get('schema', source_name)
+            tables = entry['tables']
+            
             for table in tables:
-                if (name==target_schema and table['name']==target_table):
+                if (source_name == target_schema and table['name'] == target_table):
                     match = True
                     break
-            if match: break
-        return dict(database=database, schema=name, table=table['name']) if match else dict(database=database, schema=name, table="<! TABLE NOT FOUND in dbt project !>")
+            if match: 
+                break
+                
+        if match:
+            return dict(database=database, schema=schema_name, table=table['name'])
+        else:
+            return dict(database=database, schema=target_schema, table="<! TABLE NOT FOUND in dbt project !>")
 
     def _get_macros(self, folder):
         macro_files = []

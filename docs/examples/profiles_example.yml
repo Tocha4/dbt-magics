@@ -1,0 +1,67 @@
+# Example dbt profiles.yml configuration with DuckDB export support
+
+# Option 1: Add DuckDB config to existing Snowflake profile
+snowflake_profile:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: your-account
+      user: your-username
+      role: your-role
+      database: your-database
+      warehouse: your-warehouse
+      schema: your-schema
+      project_folder: /path/to/your/dbt/project
+      # DuckDB configuration for export functionality
+      duckdb:
+        path: /path/to/your/local/analytics.duckdb
+        schema: dbt_dev  # Schema name in DuckDB for dbt tables
+    prod:
+      type: snowflake
+      account: your-account
+      user: your-username
+      role: your-role
+      database: your-database
+      warehouse: your-warehouse
+      schema: your-prod-schema
+      project_folder: /path/to/your/dbt/project
+      duckdb:
+        path: /path/to/your/prod_analytics.duckdb
+        schema: dbt_prod  # Schema name in DuckDB for dbt tables
+
+# Option 2: Separate DuckDB profile
+duckdb_profile:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: /path/to/your/local/analytics.duckdb
+      schema: dbt_analytics  # Default schema for dbt tables
+      project_folder: /path/to/your/dbt/project
+
+# Option 3: Multiple environments with schema naming
+multi_env_profile:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      # ... snowflake config
+      schema: dev_schema
+      duckdb:
+        path: /path/to/dev_analytics.duckdb
+        schema: dev_dbt  # Tables will be created as dev_dbt.table_name
+    staging:
+      type: snowflake
+      # ... snowflake config
+      schema: staging_schema
+      duckdb:
+        path: /path/to/staging_analytics.duckdb
+        schema: staging_dbt  # Tables will be created as staging_dbt.table_name
+    prod:
+      type: snowflake
+      # ... snowflake config
+      schema: prod_schema
+      duckdb:
+        path: /path/to/prod_analytics.duckdb
+        schema: prod_dbt  # Tables will be created as prod_dbt.table_name
