@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 
 import yaml
@@ -41,14 +42,62 @@ class dbtHelper():
 
     @property
     def project_folder(self):
-        pf = self.profile_config.get("project_folder", False)
-        assert pf, f'Path to the project is not set. Please set project_folder in ./dbt/profiles.yml'
+        pf = os.environ.get('MAGICS_PROJECT_FOLDER') or self.profile_config.get('project_folder')
+        print(f'Using project folder: {pf}')
+        assert pf, f'Path to the project is not set. Please set MAGICS_PROJECT_FOLDER environment variable or project_folder in profiles.yml'
         return pf
 
     def _open_yaml(self, file_path):
         with open(file_path) as pf:
             results = yaml.safe_load(pf)
         return results
+
+    def _substitute_env_vars(self, data):
+        """
+        Recursively substitute dbt env_var() function calls with environment variable values.
+        Supports syntax: {{ env_var('VAR_NAME', 'default_value') }} or {{ env_var('VAR_NAME') }}
+        """
+        if isinstance(data, dict):
+            return {key: self._substitute_env_vars(value) for key, value in data.items()}
+        elif isinstance(data, list):
+            return [self._substitute_env_vars(item) for item in data]
+        elif isinstance(data, str):
+            return self._process_env_var_string(data)
+        else:
+            return data
+    
+    def _process_env_var_string(self, text):
+        """
+        Process a string that may contain dbt env_var() function calls.
+        Handles both quoted and unquoted default values.
+        """
+        if not isinstance(text, str):
+            return text
+            
+        # Pattern to match {{ env_var('VAR_NAME', 'default') }} or {{ env_var('VAR_NAME') }}
+        # This pattern handles both single and double quotes, and optional default values
+        pattern = r'{{\s*env_var\(\s*[\'"]([^\'"]+)[\'"]\s*(?:,\s*[\'"]([^\'"]*)[\'"])?\s*\)\s*}}'
+        
+        def replace_env_var(match):
+            var_name = match.group(1)
+            default_value = match.group(2) if match.group(2) is not None else ''
+            return os.environ.get(var_name, default_value)
+        
+        return re.sub(pattern, replace_env_var, text)
+
+    def env_var(self, var_name, default_value=''):
+        """
+        Get environment variable value with optional default.
+        Similar to dbt's env_var() function.
+        
+        Args:
+            var_name (str): Name of the environment variable
+            default_value (str): Default value if environment variable is not set
+            
+        Returns:
+            str: Environment variable value or default value
+        """
+        return os.environ.get(var_name, default_value)
 
     def _search_for_source_table(self, SOURCES, target_schema, target_table, default_database):
         match = False
@@ -79,8 +128,11 @@ class dbtHelper():
         return [i for i in macro_files if i.endswith(".sql")]        
 
     def _get_profiles(self):
-        profiles_file_path = os.path.join(Path().home(), ".dbt", "profiles.yml")
-        return self._open_yaml(profiles_file_path)
+        profiles_file_path = os.environ.get('MAGICS_PROFILES_PATH') or os.path.join(Path().home(), ".dbt", "profiles.yml")
+        print(f'Using profiles.yml from: {profiles_file_path}')
+        profiles = self._open_yaml(profiles_file_path)
+        # Apply env_var substitution to the loaded profiles
+        return self._substitute_env_vars(profiles)
 
     def _get_dbt_project(self):
         dbt_project_file_path = os.path.join(self.project_folder, "dbt_project.yml")
