@@ -20,7 +20,68 @@ pip install git+https://github.com/Tocha4/dbt-magics.git
 ```
 
 ## Setup dbt
+
 For setup instructions for AWS Athena and Google BigQuery, please see the [dbt documentation](https://docs.getdbt.com/docs/running-a-dbt-project/using-the-command-line-interface#section-2-configure-your-profile).
+
+## Configuration
+
+### Environment Variables Support
+
+dbt-magics now supports flexible configuration through environment variables, making it easier to work with different projects and profiles without hardcoding paths.
+
+#### Supported Environment Variables
+
+- **`MAGICS_PROJECT_FOLDER`**: Path to your dbt project directory
+- **`MAGICS_PROFILES_PATH`**: Path to your custom profiles.yml file
+- **Custom variables**: Any environment variables referenced in your profiles.yml using dbt's `env_var()` function
+
+#### Configuration Methods
+
+You can configure dbt-magics using either IPython magic commands or Python's os.environ:
+
+```python
+import os
+
+# Method 1: Using IPython magic commands
+HOME = os.path.expanduser("~")
+%env MAGICS_PROJECT_FOLDER={HOME}/projects/my-dbt-project
+%env MAGICS_PROFILES_PATH={HOME}/.dbt/profiles.yml
+
+# Method 2: Using Python os.environ
+os.environ["MAGICS_PROJECT_FOLDER"] = os.path.expanduser("~/projects/my-dbt-project")
+os.environ["MAGICS_PROFILES_PATH"] = os.path.expanduser("~/.dbt/profiles.yml")
+```
+
+#### dbt env_var() Function Support
+
+dbt-magics fully supports dbt's `env_var()` function in profiles.yml files, allowing you to use environment variables with default values:
+
+```yaml
+# profiles.yml example
+my_profile:
+  outputs:
+    dev:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER', 'default_user') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'ANALYST') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', 'ANALYTICS') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'COMPUTE_WH') }}"
+      schema: "{{ env_var('SNOWFLAKE_SCHEMA', 'PUBLIC') }}"
+```
+
+#### Configuration Fallbacks
+
+The configuration follows this priority order:
+
+1. **Environment Variables**: `MAGICS_PROJECT_FOLDER` and `MAGICS_PROFILES_PATH`
+2. **profiles.yml settings**: `project_folder` key in your profile configuration
+3. **Default locations**:
+   - Profiles: `~/.dbt/profiles.yml`
+   - Project: Must be explicitly set (no default)
+
+For detailed configuration examples, see the [Environment Variables Documentation](docs/ENVIRONMENT_VARIABLES.md).
 
 ## Athena Magics
 In order to use the Athena magics, you first have to load the magics into your notebook:
