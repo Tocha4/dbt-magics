@@ -122,29 +122,11 @@ class dbtHelperAdapter(dbtHelper):
             #------------------------------ start ----------------------------
             # 1. Run query
             try:
+                start_time = time()  # Start the timer
                 df = session.sql(statement).to_pandas()
+                execution_time_seconds = time() - start_time  # Measure execution time
+                print(f"{prStyle.GREEN}EXECUTION_TIME {execution_time_seconds:.3f} seconds" )
 
-                # Get the last query ID
-                query_id = session.sql("SELECT LAST_QUERY_ID()").collect()[0][0]
-                #print(query_id)
-
-                # Query the INFORMATION_SCHEMA.QUERY_HISTORY table function for perfoemance metrics
-                history = session.sql(f"""
-                    SELECT 
-                        total_elapsed_time/1000 AS total_elapsed_time,
-                        execution_time /1000 as execution_time
-                        
-                    FROM TABLE(INFORMATION_SCHEMA.QUERY_HISTORY())
-                    WHERE query_id = '{query_id}'
-                """).collect()
-
-                if history:
-                    print(f"{prStyle.GREEN} TOTAL ELAPSED TIME : {history[0]['TOTAL_ELAPSED_TIME']:.3f} sec {prStyle.RESET}| {prStyle.RESET}| EXECUTION_TIME {prStyle.RED}{history[0]['EXECUTION_TIME']:.3f} sec ${prStyle.RESET} " )
-                    
-                else:
-                    print("Query details not found in recent history.")
-
-                
             except Exception as e:
                 print(f"{prStyle.RED}Not a SELECT statement.\n{e}")
                 df = None
