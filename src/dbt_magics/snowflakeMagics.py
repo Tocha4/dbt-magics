@@ -137,7 +137,7 @@ class dbtHelperAdapter(dbtHelper):
             
 
 @magics_class
-class SQLMagics(Magics):
+class SnowflakeSQLMagics(Magics):
     pd.set_option('display.max_columns', None)
 
     @line_cell_magic
@@ -278,4 +278,4 @@ def load_ipython_extension(ipython):
     });
     """
     display.display_javascript(js, raw=True)
-    ipython.register_magics(SQLMagics)
+    ipython.register_magics(SnowflakeSQLMagics)

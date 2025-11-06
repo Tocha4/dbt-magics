@@ -1,11 +1,28 @@
 import os
 import re
+import logging
 from pathlib import Path
 
 import yaml
 
+# Set up logger for dbt_magics
+logger = logging.getLogger('dbt_magics')
 
 #################### CLASSES ####################
+
+# Track logged messages to avoid duplicates
+_logged_messages = set()
+_verbose_logging = os.environ.get('MAGICS_VERBOSE_LOGGING', 'false').lower() in ('true', '1', 'yes')
+
+def _log_once(message):
+    """Log a message only once per session unless verbose logging is enabled."""
+    global _verbose_logging
+    # Re-check environment variable to allow dynamic changes
+    _verbose_logging = os.environ.get('MAGICS_VERBOSE_LOGGING', 'false').lower() in ('true', '1', 'yes')
+    
+    if _verbose_logging or message not in _logged_messages:
+        print(message)
+        _logged_messages.add(message)
 
 """
 Base class to help with dbt project
@@ -16,6 +33,7 @@ due to the different dependencies (e.g. BigQuery, Athena, SQLite)
 class dbtHelper():
 
     def __init__(self, adapter_name, profile_name=None, target=None):
+        self.adapter_name = adapter_name
         profiles = self._get_profiles()
         outputs = [i for i in profiles if any([profiles[i]['outputs'][j]['type']==adapter_name for j in profiles[i]['outputs']])] # Search for profiles matching adapter
         
@@ -42,9 +60,13 @@ class dbtHelper():
 
     @property
     def project_folder(self):
-        pf = os.environ.get('MAGICS_PROJECT_FOLDER') or self.profile_config.get('project_folder')
-        print(f'Using project folder: {pf}')
-        assert pf, f'Path to the project is not set. Please set MAGICS_PROJECT_FOLDER environment variable or project_folder in profiles.yml'
+        # Check adapter-specific env var first, then fall back to generic, then profile config
+        adapter_upper = self.adapter_name.upper()
+        pf = (os.environ.get(f'{adapter_upper}_PROJECT_FOLDER') or 
+              os.environ.get('MAGICS_PROJECT_FOLDER') or 
+              self.profile_config.get('project_folder'))
+        logger.debug(f'Using project folder: {pf}')
+        assert pf, f'Path to the project is not set. Please set {adapter_upper}_PROJECT_FOLDER, MAGICS_PROJECT_FOLDER environment variable or project_folder in profiles.yml'
         return pf
 
     def _open_yaml(self, file_path):
@@ -128,8 +150,12 @@ class dbtHelper():
         return [i for i in macro_files if i.endswith(".sql")]        
 
     def _get_profiles(self):
-        profiles_file_path = os.environ.get('MAGICS_PROFILES_PATH') or os.path.join(Path().home(), ".dbt", "profiles.yml")
-        print(f'Using profiles.yml from: {profiles_file_path}')
+        # Check adapter-specific env var first, then fall back to generic, then default location
+        adapter_upper = self.adapter_name.upper()
+        profiles_file_path = (os.environ.get(f'{adapter_upper}_PROFILES_PATH') or 
+                             os.environ.get('MAGICS_PROFILES_PATH') or 
+                             os.path.join(Path().home(), ".dbt", "profiles.yml"))
+        logger.debug(f'Using profiles.yml from: {profiles_file_path}')
         profiles = self._open_yaml(profiles_file_path)
         # Apply env_var substitution to the loaded profiles
         return self._substitute_env_vars(profiles)

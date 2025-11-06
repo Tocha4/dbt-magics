@@ -31,9 +31,13 @@ dbt-magics now supports flexible configuration through environment variables, ma
 
 #### Supported Environment Variables
 
-- **`MAGICS_PROJECT_FOLDER`**: Path to your dbt project directory
-- **`MAGICS_PROFILES_PATH`**: Path to your custom profiles.yml file
+- **`MAGICS_PROJECT_FOLDER`**: Path to your dbt project directory (global fallback)
+- **`MAGICS_PROFILES_PATH`**: Path to your custom profiles.yml file (global fallback)
+- **`SNOWFLAKE_PROJECT_FOLDER`** / **`ATHENA_PROJECT_FOLDER`** / **`BIGQUERY_PROJECT_FOLDER`**: Adapter-specific project paths
+- **`SNOWFLAKE_PROFILES_PATH`** / **`ATHENA_PROFILES_PATH`** / **`BIGQUERY_PROFILES_PATH`**: Adapter-specific profiles paths
 - **Custom variables**: Any environment variables referenced in your profiles.yml using dbt's `env_var()` function
+
+**Note**: Adapter-specific variables take precedence over generic ones, allowing you to use multiple adapters (e.g., Snowflake and Athena) in the same notebook without conflicts.
 
 #### Configuration Methods
 
@@ -75,11 +79,32 @@ my_profile:
 
 The configuration follows this priority order:
 
-1. **Environment Variables**: `MAGICS_PROJECT_FOLDER` and `MAGICS_PROFILES_PATH`
-2. **profiles.yml settings**: `project_folder` key in your profile configuration
-3. **Default locations**:
+1. **Adapter-specific environment variables**: `SNOWFLAKE_PROJECT_FOLDER`, `ATHENA_PROFILES_PATH`, etc. (highest priority)
+2. **Generic environment variables**: `MAGICS_PROJECT_FOLDER` and `MAGICS_PROFILES_PATH`
+3. **profiles.yml settings**: `project_folder` key in your profile configuration
+4. **Default locations**:
    - Profiles: `~/.dbt/profiles.yml`
    - Project: Must be explicitly set (no default)
+
+#### Using Multiple Adapters in the Same Notebook
+
+When comparing datasets during migrations or using multiple data sources, use adapter-specific environment variables:
+
+```python
+import os
+
+# Snowflake configuration
+os.environ["SNOWFLAKE_PROJECT_FOLDER"] = os.path.expanduser("~/projects/dbt_snowflake_dwh")
+os.environ["SNOWFLAKE_PROFILES_PATH"] = os.path.expanduser("~/projects/dbt_snowflake_dwh/profiles.yml")
+
+# Athena configuration
+os.environ["ATHENA_PROJECT_FOLDER"] = os.path.expanduser("~/projects/dbt_athena_dwh")
+os.environ["ATHENA_PROFILES_PATH"] = os.path.expanduser("~/.dbt/profiles.yml")
+
+# Load both magics
+%reload_ext dbt_magics.snowflakeMagics
+%reload_ext dbt_magics.athenaMagics
+```
 
 For detailed configuration examples, see the [Environment Variables Documentation](docs/ENVIRONMENT_VARIABLES.md).
 

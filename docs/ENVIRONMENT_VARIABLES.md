@@ -16,10 +16,18 @@ dbt-magics supports flexible configuration through environment variables, making
 
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
-| `MAGICS_PROJECT_FOLDER` | Path to your dbt project directory | None | Yes* |
-| `MAGICS_PROFILES_PATH` | Path to your profiles.yml file | `~/.dbt/profiles.yml` | No |
+| `MAGICS_PROJECT_FOLDER` | Path to your dbt project directory (global fallback) | None | Yes* |
+| `MAGICS_PROFILES_PATH` | Path to your profiles.yml file (global fallback) | `~/.dbt/profiles.yml` | No |
+| `SNOWFLAKE_PROJECT_FOLDER` | Path to Snowflake-specific dbt project directory | Falls back to `MAGICS_PROJECT_FOLDER` | No |
+| `SNOWFLAKE_PROFILES_PATH` | Path to Snowflake-specific profiles.yml file | Falls back to `MAGICS_PROFILES_PATH` | No |
+| `ATHENA_PROJECT_FOLDER` | Path to Athena-specific dbt project directory | Falls back to `MAGICS_PROJECT_FOLDER` | No |
+| `ATHENA_PROFILES_PATH` | Path to Athena-specific profiles.yml file | Falls back to `MAGICS_PROFILES_PATH` | No |
+| `BIGQUERY_PROJECT_FOLDER` | Path to BigQuery-specific dbt project directory | Falls back to `MAGICS_PROJECT_FOLDER` | No |
+| `BIGQUERY_PROFILES_PATH` | Path to BigQuery-specific profiles.yml file | Falls back to `MAGICS_PROFILES_PATH` | No |
 
 *Required unless specified in profiles.yml under `project_folder` key.
+
+**Note**: Adapter-specific variables (e.g., `SNOWFLAKE_PROJECT_FOLDER`) take precedence over generic variables (e.g., `MAGICS_PROJECT_FOLDER`). This allows you to use multiple adapters in the same notebook without conflicts.
 
 ### Custom Variables in profiles.yml
 
@@ -178,21 +186,66 @@ athena_project:
       project_folder: "{{ env_var('MAGICS_PROJECT_FOLDER') }}"
 ```
 
+### Using Multiple Adapters in the Same Notebook
+
+When comparing datasets during migrations or working with multiple data sources, you can use adapter-specific environment variables to avoid conflicts:
+
+```python
+import os
+import pandas as pd 
+import numpy as np
+from datetime import datetime
+
+# Configure Snowflake-specific variables
+os.environ["SNOWFLAKE_PROJECT_FOLDER"] = os.path.expanduser("~/projects/data-aws/dbt_snowflake_dwh")
+os.environ["SNOWFLAKE_PROFILES_PATH"] = os.path.expanduser("~/projects/data-aws/dbt_snowflake_dwh/profiles.yml")
+os.environ["OKTA_USR"] = 'stephan.feller'
+os.environ["SNOWFLAKE_USR"] = 'STEPHANFELLER'
+
+# Configure Athena-specific variables
+os.environ["ATHENA_PROJECT_FOLDER"] = os.path.expanduser("~/projects/data-aws/dbt_athena_dwh")
+os.environ["ATHENA_PROFILES_PATH"] = os.path.expanduser("~/.dbt/profiles.yml")
+os.environ["AWS_REGION"] = "us-east-1"
+os.environ["ATHENA_S3_STAGING_DIR"] = "s3://my-athena-results-bucket/"
+
+# Load both magics
+%reload_ext dbt_magics.snowflakeMagics
+%reload_ext dbt_magics.athenaMagics
+
+# Now you can use both in the same notebook
+%%snowflake
+SELECT COUNT(*) as snowflake_count FROM {{ ref('my_model') }}
+
+%%athena
+SELECT COUNT(*) as athena_count FROM {{ ref('my_model') }}
+```
+
+**Priority Order for Configuration:**
+1. **Adapter-specific env vars** (e.g., `SNOWFLAKE_PROJECT_FOLDER`, `ATHENA_PROFILES_PATH`)
+2. **Generic env vars** (e.g., `MAGICS_PROJECT_FOLDER`, `MAGICS_PROFILES_PATH`)
+3. **profiles.yml settings** (e.g., `project_folder` key)
+4. **Default locations** (e.g., `~/.dbt/profiles.yml`)
+
 ## Configuration Fallbacks
 
 dbt-magics follows this priority order for configuration:
 
-### 1. Environment Variables (Highest Priority)
+### 1. Adapter-Specific Environment Variables (Highest Priority)
+
+- `SNOWFLAKE_PROJECT_FOLDER` / `ATHENA_PROJECT_FOLDER` / `BIGQUERY_PROJECT_FOLDER`
+- `SNOWFLAKE_PROFILES_PATH` / `ATHENA_PROFILES_PATH` / `BIGQUERY_PROFILES_PATH`
+
+### 2. Generic Environment Variables
 
 - `MAGICS_PROJECT_FOLDER`: Overrides any project_folder setting
 - `MAGICS_PROFILES_PATH`: Overrides default profiles.yml location
 
-### 2. profiles.yml Configuration
+### 3. profiles.yml Configuration
 
-- `project_folder`: Used if `MAGICS_PROJECT_FOLDER` is not set
+- `project_folder`: Used if no environment variables are set
 - Standard dbt profile settings
 
-### 3. Default Values (Lowest Priority)
+### 4. Default Values (Lowest Priority)
 
 - Profiles location: `~/.dbt/profiles.yml`
 - No default for project folder (must be explicitly set)
