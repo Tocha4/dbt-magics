@@ -24,8 +24,8 @@ Implementation of the AthenaDataContoller class.
 Implement abstract methods from DataController class.
 """
 class SnowflakeDataController(DataController):
-    def __init__(self, target=None):
-        self.dbt_helper = dbtHelperAdapter(adapter_name= 'snowflake', target=target)
+    def __init__(self, target=None, profile_name=None):
+        self.dbt_helper = dbtHelperAdapter(adapter_name= 'snowflake', profile_name=profile_name, target=target)
         connection_parameters= dict(user = self.dbt_helper.profile_config.get("user"),
                                authenticator = self.dbt_helper.profile_config.get("authenticator"),
                               role = self.dbt_helper.profile_config.get("role"),
@@ -190,8 +190,9 @@ class SnowflakeSQLMagics(Magics):
         ---------------------------------------------------------------------------
         """
         if cell == None:
-            target = line.split('--target ')[-1] if '--target' in line else None
-            dc = SnowflakeDataController(target=target)
+            target = line.split('--target ')[-1].split()[0] if '--target' in line else None
+            profile_name = line.split('--profiles ')[-1].split()[0] if '--profiles' in line else None
+            dc = SnowflakeDataController(target=target, profile_name=profile_name)
             return dc()
 
         args = magic_arguments.parse_argstring(self.snowflake, line)
