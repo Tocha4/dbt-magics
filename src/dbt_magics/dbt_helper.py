@@ -38,7 +38,7 @@ class dbtHelper():
         outputs = [i for i in profiles if any([profiles[i]['outputs'][j]['type']==adapter_name for j in profiles[i]['outputs']])] # Search for profiles matching adapter
         
         if len(outputs)>1:
-            assert profile_name!=None, f'More then one profile for adapter={adapter_name}. Profiles: {outputs}\nPlease use --profiles flag like (%%athena --profiles {outputs[0]})'
+            assert profile_name!=None, f'More than one profile for adapter={adapter_name}. Profiles: {outputs}\nPlease use --profile flag like (%%athena --profile {outputs[0]})'
             self.profile_name = profile_name
         elif profile_name!=None:
             assert profile_name in tuple(profiles.keys()), f'Selected profile not in ./dbt/profiles.yml.\nAvailable profiles: {tuple(profiles.keys())}.'

@@ -191,7 +191,7 @@ class SnowflakeSQLMagics(Magics):
         """
         if cell == None:
             target = line.split('--target ')[-1].split()[0] if '--target' in line else None
-            profile_name = line.split('--profiles ')[-1].split()[0] if '--profiles' in line else None
+            profile_name = line.split('--profile ')[-1].split()[0] if '--profile' in line else None
             dc = SnowflakeDataController(target=target, profile_name=profile_name)
             return dc()
 
