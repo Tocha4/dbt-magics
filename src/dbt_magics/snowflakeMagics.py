@@ -35,7 +35,10 @@ class SnowflakeDataController(DataController):
                               schema = self.dbt_helper.profile_config.get("schema")
                              )
         self.root = self.get_metadata(connection_parameters)
-        super().__init__(r"%%snowflake")
+        line_magic_name = r"%%snowflake"
+        if target:
+            line_magic_name += f" --target {target}"
+        super().__init__(line_magic_name)
 
     """
     Implemented Abstract methods
@@ -199,7 +202,7 @@ class SnowflakeSQLMagics(Magics):
         #print(args)
         self.dbt_helper = dbtHelperAdapter('snowflake', args.profile, args.target) 
 
-        env = Environment()
+        env = Environment(extensions=['jinja2.ext.do'])
         def ipython(variable):
             try: result = get_ipython().ev(variable)
             except: result = False
@@ -209,7 +212,7 @@ class SnowflakeSQLMagics(Magics):
 
         macros_txt = self.dbt_helper.macros_txt
         jinja_statement = macros_txt+cell
-        statement = Template(jinja_statement).render(source=self.dbt_helper.source, ref=self.dbt_helper.ref, var=self.dbt_helper.var, **kwargs).strip()
+        statement = env.from_string(jinja_statement).render(source=self.dbt_helper.source, ref=self.dbt_helper.ref, var=self.dbt_helper.var, **kwargs).strip()
         #print(f'statement of query {statement}')
 
         
