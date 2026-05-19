@@ -219,6 +219,9 @@ class dbtHelper():
             for mf in macros_files:
                 with open(mf, encoding='utf-8') as file:
                     macros_txt += "".join(file.readlines()) + "\n"
+        # Strip dbt-specific {% materialization %} blocks — not supported by standard Jinja2
+        import re
+        macros_txt = re.sub(r'\{%-?\s*materialization\b.*?\{%-?\s*endmaterialization\s*-?%\}', '', macros_txt, flags=re.DOTALL)
         return macros_txt
 
     def var(self, value):
